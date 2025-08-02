@@ -52,7 +52,10 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003'}/api/:path*`,
+        // Эта настройка проксирует запросы к вашему haplo-серверу.
+        // Установите переменную окружения HAPLO_API_URL, чтобы указать на ваш API.
+        // Например: HAPLO_API_URL=http://192.168.10.187:9003
+        destination: `${process.env.HAPLO_API_URL || 'http://localhost:9003'}/api/:path*`,
       },
     ]
   }

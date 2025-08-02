@@ -315,7 +315,8 @@ export async function processMatches(matches: Match[], filters: Filters): Promis
 
         console.log(`📡 Отправляем batch запрос для ${uniqueHaplogroups.size} уникальных гаплогрупп`);
         
-        const response = await axios.post<{ results: Record<string, boolean> }>(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003'}/api/batch-check-subclades`, batchPayload);
+        // Используем относительный путь. Next.js проксирует этот запрос согласно правилу в next.config.js
+        const response = await axios.post<{ results: Record<string, boolean> }>(`/api/batch-check-subclades`, batchPayload);
         
         const results = response.data.results;
 

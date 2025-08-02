@@ -64,26 +64,37 @@ try {
 }
 
 // CORS setup
-const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
-const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
+const isProduction = process.env.NODE_ENV === 'production';
 
-console.log('Allowed CORS origins:', allowedOrigins);
-
-app.use(cors({
+const corsOptions = {
+    credentials: true,
     origin: (origin, callback) => {
-        // Allow requests with no origin (like same-origin requests, mobile apps, or curl commands)
-        if (!origin) {
+        // В режиме разработки, разрешаем любой источник для максимальной гибкости.
+        if (!isProduction) {
+            console.log(`CORS: Allowing development request from origin: ${origin}`);
             return callback(null, true);
         }
-        // Allow if the origin is in our list
-        if (allowedOrigins.includes(origin)) {
+
+        // В режиме продакшена, используем строгий список из переменной окружения.
+        const allowedOriginsStr = process.env.ALLOWED_ORIGINS || '';
+        const allowedOrigins = allowedOriginsStr.split(',').filter(Boolean);
+
+        if (allowedOrigins.length === 0 && origin) {
+            console.warn(`⚠️ CORS WARNING: No ALLOWED_ORIGINS set for production. Blocking request from ${origin}.`);
+        }
+
+        // Разрешаем запросы без origin (например, с того же домена) или если источник в списке.
+        if (!origin || allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        // Block all other cross-origin requests
+
+        // Блокируем все остальные запросы в продакшене.
+        console.error(`CORS Blocked: Origin ${origin} is not in the allowed list.`);
         return callback(new Error(`CORS policy does not allow access from the specified origin: ${origin}`));
-    },
-    credentials: true
-}));
+    }
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
