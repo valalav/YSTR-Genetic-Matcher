@@ -1,6 +1,6 @@
 const path = require('path');
-// Загружаем переменные окружения из .env файла в родительской директории
-require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+// Переменные окружения теперь управляются исключительно через PM2 (ecosystem.config.js)
+// require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const express = require('express');
 const cors = require('cors');
