@@ -235,3 +235,6 @@ pnpm-lock.yaml
 # data/
 # models/
 # training_data/
+
+# Ignore large data files
+ftdna_haplo/data/get.json
