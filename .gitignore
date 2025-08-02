@@ -178,7 +178,7 @@ celerybeat.pid
 *.csv
 # Игнорируем JSON файлы, но с исключениями для важных данных и конфигураций
 # *.json
-!/ftdna_haplo/data/*.json
+#!/ftdna_haplo/data/*.json
 *.xlsx
 *.xls
 !package.json
