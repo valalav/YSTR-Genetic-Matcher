@@ -5,7 +5,7 @@ const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://127.0.0.1:9003/ap
 
 export async function GET(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/', '')
-  
+
   try {
     console.log(`Проксируем запрос к: ${BACKEND_API_URL}/${path}`)
     

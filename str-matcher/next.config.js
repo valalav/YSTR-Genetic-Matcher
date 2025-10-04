@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+
   // Optimize file watching to prevent unnecessary restarts
   webpack: (config, { dev, isServer }) => {
     if (dev) {
@@ -24,9 +26,6 @@ const nextConfig = {
         ]
       };
     }
-
-    // Workers are handled natively by Next.js with new URL() syntax
-    // No need for worker-loader configuration
 
     return config;
   },
