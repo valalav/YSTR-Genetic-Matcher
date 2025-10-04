@@ -1,41 +1,92 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseCSVData } from '../../utils/csvParser';
 import type { STRProfile } from '@/utils/constants';
-import { dbManager } from '@/utils/storage/indexedDB';
 
 interface DatabaseInputProps {
-  onDataLoaded: (profiles: STRProfile[]) => void;
+  onDataLoaded: (profiles: STRProfile[]) => Promise<void>;
+  onDataProcessed: (lastKitNumber?: string) => void;
   onError: (error: string) => void;
   recordCount: number;
 }
 
-const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, recordCount }) => {
+const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onDataProcessed, onError, recordCount }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleTextInput = useCallback(async (text: string) => {
     if (!text.trim()) return;
-    
+
     try {
       setLoading(true);
+      setIsProcessing(true);
+
       const profiles = await parseCSVData(text);
-      
-      // 🔄 НАКОПИТЕЛЬНОЕ СОХРАНЕНИЕ: используем новый метод mergeProfiles
-      await dbManager.mergeProfiles(profiles);
-      
-      // Передаем только новые профили для добавления в память
-      onDataLoaded(profiles);
+
+      // ✅ ИСПРАВЛЕНО: Ждём завершения mergeDatabase
+      await onDataLoaded(profiles);
+
+      // Находим последний профиль и передаём его kitNumber
+      const lastKitNumber = profiles.length > 0 ? profiles[profiles.length - 1].kitNumber : undefined;
+
+      // Теперь вызываем onDataProcessed с kitNumber последнего профиля
+      onDataProcessed(lastKitNumber);
+
+      // Очищаем поле после успешной обработки
+      setPasteText('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+      }
+
+      console.log(`✅ Успешно обработано ${profiles.length} профилей, последний: ${lastKitNumber}`);
+
     } catch (error) {
       console.error('Error parsing CSV data:', error);
       onError(error instanceof Error ? error.message : 'Failed to parse CSV data');
     } finally {
       setLoading(false);
+      setIsProcessing(false);
     }
-  }, [onDataLoaded, onError]);
+  }, [onDataLoaded, onDataProcessed, onError]);
+
+  // ✅ НОВЫЙ обработчик события paste
+  const handlePaste = useCallback(async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    event.preventDefault();
+    const pastedText = event.clipboardData.getData('text');
+    
+    if (pastedText.trim()) {
+      setPasteText(pastedText);
+      
+      // Обновляем textarea
+      if (textareaRef.current) {
+        textareaRef.current.value = pastedText;
+      }
+      
+      // Мгновенно обрабатываем вставленные данные
+      await handleTextInput(pastedText);
+    }
+  }, [handleTextInput]);
+
+  // ✅ НОВЫЙ обработчик изменений
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = event.target.value;
+    setPasteText(newValue);
+    
+    // Если данные выглядят как CSV (содержат табы или запятые), обрабатываем
+    if (newValue.includes('\t') || newValue.includes(',')) {
+      // Дебаунсинг для избежания частых вызовов
+      clearTimeout(window.csvProcessingTimeout);
+      window.csvProcessingTimeout = setTimeout(() => {
+        handleTextInput(newValue);
+      }, 500);
+    }
+  }, [handleTextInput]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -61,10 +112,25 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
         <div className="flex gap-4 items-start">
           <div className="flex-1">
             <textarea
+              ref={textareaRef}
               className="w-full h-32 p-2 border rounded-md bg-background-primary resize-none"
               placeholder={t('database.pasteOrDrop')}
-              onBlur={(e) => handleTextInput(e.target.value)}
+              value={pasteText}
+              onPaste={handlePaste}        // ✅ ДОБАВЛЕНО
+              onChange={handleChange}      // ✅ ДОБАВЛЕНО
+              onBlur={(e) => {            // ✅ ОСТАВЛЕНО для совместимости
+                if (e.target.value.trim() && e.target.value !== pasteText) {
+                  handleTextInput(e.target.value);
+                }
+              }}
+              disabled={loading}
             />
+            {isProcessing && (
+              <div className="mt-2 text-sm text-blue-600 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Обработка данных...
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <label className="inline-block px-4 py-2 bg-accent text-white rounded-md hover:bg-accent/90 transition-colors cursor-pointer">
@@ -73,8 +139,9 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
                 accept=".csv"
                 onChange={handleFileUpload}
                 className="hidden"
+                disabled={loading}
               />
-              {t('database.uploadCSV')}
+              {loading ? 'Загрузка...' : t('database.uploadCSV')}
             </label>
             <div className="text-sm text-text-secondary text-center">
               {loading ? t('database.loadingData') : (
@@ -82,6 +149,16 @@ const DatabaseInput: React.FC<DatabaseInputProps> = ({ onDataLoaded, onError, re
               )}
             </div>
           </div>
+        </div>
+        
+        {/* ✅ ДОБАВЛЕНО: Инструкции для пользователя */}
+        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+          💡 <strong>Как использовать:</strong>
+          <ul className="mt-1 ml-4 list-disc">
+            <li>Скопируйте таблицу из Excel или браузера (Ctrl+C)</li>
+            <li>Вставьте в поле выше (Ctrl+V) - данные обработаются автоматически</li>
+            <li>Или загрузите CSV файл через кнопку "Загрузить CSV"</li>
+          </ul>
         </div>
       </CardContent>
     </Card>

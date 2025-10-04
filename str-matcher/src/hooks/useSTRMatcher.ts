@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { STRProfile, STRMatch, HistoryItem, MarkerCount } from '@/utils/constants';
 import type { CalculationMode } from '@/utils/calculations';
 import { useWorker } from '@/hooks/useWorker';
 import { markerOperations } from '@/utils/markerOperations';
+import { dbManager } from '@/utils/storage/indexedDB';
 
 const CALCULATION_MODE_KEY = 'str_matcher_calculation_mode';
+
+// ✅ ГЛОБАЛЬНЫЙ ФЛАГ для защиты от React Strict Mode дублирования
+let isMerging = false;
 
 // 🔄 УТИЛИТА: Объединение профилей без дублей (последний загруженный побеждает)
 const mergeProfiles = (existingProfiles: STRProfile[], newProfiles: STRProfile[]): STRProfile[] => {
@@ -33,7 +37,8 @@ const mergeProfiles = (existingProfiles: STRProfile[], newProfiles: STRProfile[]
 export const useSTRMatcher = () => {
   // 🔄 УПРОЩЕНИЕ: Простое хранение базы в памяти
   const [database, setDatabase] = useState<STRProfile[]>([]);
-  
+  const initialized = useRef(false); // Флаг инициализации
+
   const [query, setQuery] = useState<STRProfile | null>(null);
   const [matches, setMatches] = useState<STRMatch[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,7 +72,51 @@ export const useSTRMatcher = () => {
   useEffect(() => {
     localStorage.setItem(CALCULATION_MODE_KEY, JSON.stringify(calculationMode));
   }, [calculationMode]);
-  
+
+  // 🔄 ЗАГРУЗКА ДАННЫХ ИЗ IndexedDB при инициализации
+  useEffect(() => {
+    // ✅ ЗАЩИТА ОТ REACT STRICT MODE - выполняем только один раз
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const loadProfilesFromIndexedDB = async () => {
+      try {
+        console.log('📂 Инициализируем IndexedDB...');
+
+        // ✅ СНАЧАЛА ИНИЦИАЛИЗИРУЕМ БАЗУ ДАННЫХ
+        await dbManager.init();
+        console.log('✅ IndexedDB инициализирована');
+
+        // 🗑️ ОЧИСТКА ПРИ DEV РЕЖИМЕ
+        if (process.env.NODE_ENV === 'development') {
+          await dbManager.clearProfiles();
+          console.log('🗑️ IndexedDB очищена (dev режим) - при каждом запуске база пустая');
+          setDatabase([]); // Очищаем массив в памяти тоже
+          return; // Не загружаем данные, так как очистили
+        }
+
+        // Проверяем, есть ли данные в IndexedDB
+        const hasData = await dbManager.hasProfiles();
+        if (!hasData) {
+          console.log('📂 IndexedDB пуста, данные не загружены');
+          return;
+        }
+
+        const count = await dbManager.getProfilesCount();
+        console.log(`📂 Найдено ${count} профилей в IndexedDB, загружаем...`);
+
+        // Загружаем профили из IndexedDB
+        const profiles = await dbManager.getProfiles();
+        setDatabase(profiles);
+        console.log(`✅ Загружено ${profiles.length} профилей из IndexedDB в память`);
+      } catch (error) {
+        console.error('❌ Ошибка загрузки из IndexedDB:', error);
+      }
+    };
+
+    loadProfilesFromIndexedDB();
+  }, []); // Выполняется только при монтировании компонента
+
   const { execute: executeMatching } = useWorker();
 
   // 🔄 УПРОЩЕННАЯ ЛОГИКА ПОИСКА: Работаем с массивом в памяти
@@ -205,12 +254,41 @@ export const useSTRMatcher = () => {
   }, []);
 
   // 🔄 НОВАЯ ФУНКЦИЯ: Накопительное добавление профилей без дублей
-  const mergeDatabase = useCallback((newProfiles: STRProfile[]) => {
-    setDatabase(prevDatabase => {
-      const merged = mergeProfiles(prevDatabase, newProfiles);
-      console.log(`🔄 База обновлена: было ${prevDatabase.length}, добавлено ${newProfiles.length}, стало ${merged.length}`);
-      return merged;
-    });
+  const mergeDatabase = useCallback(async (newProfiles: STRProfile[]) => {
+    // ✅ ЗАЩИТА ОТ ПОВТОРНОГО ВЫЗОВА через глобальный флаг
+    if (isMerging) {
+      console.log('⏭️ Пропуск дублирующего вызова mergeDatabase');
+      return;
+    }
+
+    isMerging = true; // Устанавливаем СРАЗУ, синхронно
+    console.log('🔒 mergeDatabase заблокирован (isMerging = true)');
+
+    try {
+      // Обновляем массив в памяти СИНХРОННО
+      const mergedProfiles = await new Promise<STRProfile[]>((resolve) => {
+        setDatabase(prevDatabase => {
+          const merged = mergeProfiles(prevDatabase, newProfiles);
+          console.log(`🔄 База обновлена в памяти: было ${prevDatabase.length}, добавлено ${newProfiles.length}, стало ${merged.length}`);
+
+          // Резолвим промис с новым массивом
+          setTimeout(() => resolve(merged), 0);
+
+          return merged;
+        });
+      });
+
+      // Сохраняем в IndexedDB ПОСЛЕ обновления state
+      await dbManager.mergeProfiles(newProfiles);
+      console.log(`💾 Данные сохранены в IndexedDB (${mergedProfiles.length} профилей)`);
+
+    } catch (error) {
+      console.error('❌ Ошибка mergeDatabase:', error);
+      throw error;
+    } finally {
+      isMerging = false; // Снимаем блокировку
+      console.log('🔓 mergeDatabase разблокирован (isMerging = false)');
+    }
   }, []);
 
   return {

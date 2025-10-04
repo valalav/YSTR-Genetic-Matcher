@@ -35,7 +35,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const STRMatcher: React.FC = () => {
   const { t } = useTranslation();
-  
+
+  // ✅ УБРАНО: Инициализация теперь только в useSTRMatcher
+  // Двойная инициализация вызывала проблемы
+
   // 🔄 УПРОЩЕННЫЕ состояния из useSTRMatcher
   const {
     database, // 🔄 Простой массив в памяти
@@ -97,6 +100,21 @@ const STRMatcher: React.FC = () => {
 
   // Добавим состояние для отслеживания активности фильтра
   const [isFilterActive, setIsFilterActive] = useState(false);
+
+  // Состояние для отслеживания последнего импорта
+  const [lastImportedKitNumber, setLastImportedKitNumber] = useState<string | null>(null);
+
+  // ✅ useEffect для автовыбора последнего импортированного профиля
+  useEffect(() => {
+    if (lastImportedKitNumber && database.length > 0) {
+      console.log(`🔍 Автовыбор последнего импортированного профиля: ${lastImportedKitNumber}`);
+      const profile = database.find(p => p.kitNumber === lastImportedKitNumber);
+      if (profile) {
+        populateFromKitNumber(lastImportedKitNumber);
+        setLastImportedKitNumber(null); // Сбрасываем чтобы не повторять
+      }
+    }
+  }, [database, lastImportedKitNumber]);
 
   // 🔄 УПРОЩЕНИЕ: Убираем автозагрузку сохраненных профилей
   // База данных теперь пустая при запуске - пользователь загружает CSV файлы вручную
@@ -556,6 +574,14 @@ const STRMatcher: React.FC = () => {
               <Collapsible title={t('database.manualInput')} defaultOpen={false}>
                 <DatabaseInput
                   onDataLoaded={mergeDatabase}
+                  onDataProcessed={(lastKitNumber) => {
+                    // ✅ Устанавливаем последний импортированный kitNumber
+                    // useEffect выше автоматически вызовет populateFromKitNumber когда database обновится
+                    if (lastKitNumber) {
+                      console.log(`📝 Установлен последний импортированный профиль: ${lastKitNumber}`);
+                      setLastImportedKitNumber(lastKitNumber);
+                    }
+                  }}
                   onError={setError}
                   recordCount={totalProfiles}
                 />

@@ -8,14 +8,17 @@ export const parseCSVData = async (csvText: string): Promise<STRProfile[]> => {
     if (lines.length < 1) throw new Error('CSV file is empty or invalid');
 
     // Парсим заголовки
-    const headers = lines[0].split(/\t|,/).map(h => h.trim());
-    
+    const headers = lines[0].split(/\t|,/).map(h => h.trim().replace(/"/g, ''));
+    console.log('📋 Заголовки CSV:', headers);
+
     // Определяем индексы колонок
-    const kitIndex = headers.findIndex(h => 
-      h.toLowerCase().includes('kit') || 
-      h.toLowerCase() === 'id' || 
-      h.toLowerCase() === 'number'
-    );
+    const kitNumberAliases = ['kit number', 'kit no', 'kit', 'id', 'number', 'kitnumber'];
+    const kitIndex = headers.findIndex(h => kitNumberAliases.includes(h.toLowerCase()));
+    console.log(`🔍 Индекс колонки kitNumber: ${kitIndex} (заголовок: "${headers[kitIndex]}")`);
+
+    if (kitIndex === -1) {
+      console.warn('⚠️ Колонка kitNumber не найдена! Доступные заголовки:', headers);
+    }
     const nameIndex = headers.findIndex(h => 
       h.toLowerCase() === 'name' || 
       h.toLowerCase().includes('paternal')
@@ -41,9 +44,21 @@ export const parseCSVData = async (csvText: string): Promise<STRProfile[]> => {
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(/\t|,/).map(v => v.trim());
-      
+
+      const actualKitNumber = kitIndex >= 0 ? values[kitIndex] : '';
+
+      // 🐛 Дебаг: выводим первые 3 профиля
+      if (i <= 3) {
+        console.log(`📝 Строка ${i}:`, {
+          kitIndex,
+          actualKitNumber,
+          'values[kitIndex]': values[kitIndex],
+          firstFewValues: values.slice(0, 5)
+        });
+      }
+
       const profile: STRProfile = {
-        kitNumber: kitIndex >= 0 ? values[kitIndex] || `AUTO_${++profileCounter}` : `AUTO_${++profileCounter}`,
+        kitNumber: actualKitNumber || `AUTO_${++profileCounter}`,
         markers: {}
       };
 
