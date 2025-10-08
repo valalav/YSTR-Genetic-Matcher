@@ -165,6 +165,37 @@ class YFullAdapter {
         }
         return null;
     }
+
+    isSubclade(haplogroupName, parentHaplogroupName) {
+        return this.yfullTree.isSubclade(haplogroupName, parentHaplogroupName);
+    }
+
+    getAllSubclades(parentHaplogroupName) {
+        const parentNode = this.yfullTree.findNodeById(parentHaplogroupName);
+        if (!parentNode) {
+            return [];
+        }
+
+        const subclades = new Set();
+        const queue = [parentNode];
+        
+        subclades.add(this.formatHaplogroupName(parentNode));
+
+        while (queue.length > 0) {
+            const currentNode = queue.shift();
+
+            if (currentNode && currentNode.children && Array.isArray(currentNode.children)) {
+                for (const childNode of currentNode.children) {
+                    if (childNode) {
+                        subclades.add(this.formatHaplogroupName(childNode));
+                        queue.push(childNode);
+                    }
+                }
+            }
+        }
+        
+        return Array.from(subclades);
+    }
 }
 
 module.exports = { YFullAdapter };

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
 // Используем относительный путь для проксирования через Next.js
-// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9003';
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9004';
 
 export const useHaplogroups = () => {
     const [filterHaplogroup, setFilterHaplogroup] = useState<string>('');

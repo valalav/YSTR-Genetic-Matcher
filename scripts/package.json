@@ -1,0 +1,14 @@
+{
+  "name": "ystr-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for downloading and processing YSTR data",
+  "main": "download_and_upload_data.js",
+  "scripts": {
+    "download": "node download_and_upload_data.js"
+  },
+  "dependencies": {
+    "papaparse": "^5.5.3",
+    "pg": "^8.16.3",
+    "xlsx": "^0.18.5"
+  }
+}

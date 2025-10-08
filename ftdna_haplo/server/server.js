@@ -251,7 +251,7 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
     
     try {
         const { haplogroups, parentHaplogroups } = req.body;
-        console.log('Request body:', { haplogroups: haplogroups?.length, parentHaplogroups: parentHaplogroups?.length });
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
         
         if (!Array.isArray(haplogroups) || !Array.isArray(parentHaplogroups)) {
             console.log('❌ Invalid request format');
@@ -264,8 +264,9 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
 
         const results = {};
         
-        if (!haplogroupService) {
-            console.log('⚠️ Haplogroup service not available, using fallback logic for batch');
+        // 🚨 ПРИНУДИТЕЛЬНО используем fallback из-за проблем с haplogroupService
+        if (!haplogroupService || true) { // Временно всегда используем fallback
+            console.log('⚠️ Using fallback logic for batch (haplogroupService disabled due to issues)');
             
             // Fallback логика для batch
             for (const haplogroup of haplogroups) {
@@ -299,9 +300,9 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
                             break; // Если найдено совпадение, не нужно проверять остальные
                         }
                     } catch (error) {
-                        console.error(`Error checking ${haplogroup} vs ${parentHaplogroup}:`, error);
-                        // При ошибке используем fallback
-                        if (haplogroup === parentHaplogroup || (haplogroup && haplogroup.startsWith(parentHaplogroup))) {
+                        console.error(`Error checking ${haplogroup} vs ${parentHaplogroup}:`, error.message);
+                        // При ошибке используем fallback, но не прерываем цикл
+                        if (haplogroup === parentHaplogroup || (haplogroup && parentHaplogroup && haplogroup.startsWith(parentHaplogroup))) {
                             isMatch = true;
                             break;
                         }
@@ -392,6 +393,37 @@ apiRouter.get(`/autocomplete`, async (req, res) => {
     } catch (error) {
         console.error('Error in autocomplete:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+apiRouter.get(`/subclades/:haplogroup`, async (req, res) => {
+    try {
+        if (!haplogroupService) {
+            return res.status(503).json({
+                error: 'Haplogroup service not available',
+                details: 'Service failed to initialize'
+            });
+        }
+        
+        const subclades = await haplogroupService.getAllSubclades(req.params.haplogroup);
+        
+        if (!subclades || subclades.length === 0) {
+            return res.status(404).json({
+                error: `No subclades found for ${req.params.haplogroup}`,
+                details: 'The specified haplogroup might not exist or has no children.'
+            });
+        }
+
+        res.json({
+            parent: req.params.haplogroup,
+            subclades: subclades
+        });
+    } catch (error) {
+        console.error('Error in subclades endpoint:', error);
+        res.status(500).json({
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 

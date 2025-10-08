@@ -84,6 +84,7 @@ export interface STRProfile {
 export interface STRMatch {
   profile: STRProfile;
   distance: number;
+  distanceExtended?: number;
   comparedMarkers: number;
   identicalMarkers: number;
   percentIdentical: number;

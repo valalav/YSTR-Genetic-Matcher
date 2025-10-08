@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ystr-postgres
+    environment:
+      POSTGRES_DB: ystr_matcher
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_ystr_password_2024}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/optimizations.sql:/docker-entrypoint-initdb.d/02-optimizations.sql
+    ports:
+      - "5432:5432"
+    command: postgres -c 'shared_buffers=512MB' -c 'effective_cache_size=1GB' -c 'work_mem=64MB' -c 'maintenance_work_mem=256MB'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ystr_matcher"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ystr-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ystr-backend
+    environment:
+      NODE_ENV: development
+      PORT: 9004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ystr_matcher
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-secure_ystr_password_2024}
+      DB_MAX_CONNECTIONS: 10
+      REDIS_URL: redis://redis:6379
+      CUDA_PREDICTOR_URL: http://cuda-predictor:8080
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      MAX_PROFILES_PER_BATCH: 10000
+      WORKER_CONCURRENCY: 2
+    ports:
+      - "9004:9004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Mock CUDA Predictor Service
+  cuda-predictor:
+    build:
+      context: ./cuda-predictor
+      dockerfile: Dockerfile
+    container_name: ystr-cuda-predictor
+    environment:
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Application (using existing str-matcher temporarily)
+  frontend:
+    build:
+      context: ./str-matcher
+      dockerfile: Dockerfile
+    container_name: ystr-frontend
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:9004/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: ystr-network

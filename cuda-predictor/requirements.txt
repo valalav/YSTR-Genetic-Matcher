@@ -1,0 +1,39 @@
+# CUDA-accelerated Haplogroup Predictor Dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+redis>=4.6.0
+numba>=0.57.0
+cupy-cuda11x>=12.0.0  # For CUDA 11.x, adjust version as needed
+
+# Data processing
+h5py>=3.8.0
+tables>=3.8.0
+pyarrow>=12.0.0
+
+# Machine Learning
+xgboost>=1.7.0
+lightgbm>=4.0.0
+catboost>=1.2.0
+optuna>=3.2.0
+tensorboard>=2.13.0
+
+# Model serving
+joblib>=1.3.0
+pickle5>=0.0.12
+onnxruntime-gpu>=1.15.0
+
+# Monitoring and logging
+prometheus-client>=0.17.0
+structlog>=23.1.0
+
+# Development
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0

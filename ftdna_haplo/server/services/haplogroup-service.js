@@ -95,12 +95,10 @@ class HaplogroupService {
                 console.log('⚠️ FTDNA tree not available or missing isSubclade method');
             }
 
-            if (!isSubcladeResult && this.yfullTree && typeof this.yfullTree.isSubclade === 'function') {
+            if (!isSubcladeResult && this.yfullTree) {
                 console.log('📊 Checking with YFull tree...');
                 isSubcladeResult = this.yfullTree.isSubclade(haplogroup, parentHaplogroup);
                 console.log('YFull check result:', isSubcladeResult);
-            } else if (!isSubcladeResult) {
-                console.log('⚠️ YFull tree not available or missing isSubclade method');
             }
         } catch (error) {
             console.error('❌ Error in checkSubclade:', error);
@@ -112,6 +110,27 @@ class HaplogroupService {
         console.log(`✅ Final result for "${haplogroup}" vs "${parentHaplogroup}": ${isSubcladeResult}`);
         return isSubcladeResult;
     }
+
+    async getAllSubclades(parentHaplogroup) {
+        console.log(`🌿 Getting all subclades for "${parentHaplogroup}"`);
+        const allSubclades = new Set();
+
+        if (this.ftdnaTree && typeof this.ftdnaTree.getAllSubclades === 'function') {
+            const ftdnaSubclades = this.ftdnaTree.getAllSubclades(parentHaplogroup);
+            ftdnaSubclades.forEach(subclade => allSubclades.add(subclade));
+            console.log(`📊 Found ${ftdnaSubclades.length} subclades in FTDNA tree.`);
+        }
+
+        if (this.yfullTree && typeof this.yfullTree.getAllSubclades === 'function') {
+            const yfullSubclades = this.yfullTree.getAllSubclades(parentHaplogroup);
+            yfullSubclades.forEach(subclade => allSubclades.add(subclade));
+            console.log(`🌳 Found ${yfullSubclades.length} subclades in YFull tree.`);
+        }
+
+        const result = Array.from(allSubclades);
+        console.log(`✅ Total unique subclades found: ${result.length}`);
+        return result;
+    }
 }
 
-module.exports = HaplogroupService; 
+module.exports = HaplogroupService;

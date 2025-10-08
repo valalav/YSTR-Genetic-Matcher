@@ -1,0 +1,39 @@
+{
+  "name": "ystr-matcher-backend",
+  "version": "2.0.0",
+  "description": "Optimized backend for YSTR matching with PostgreSQL support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.0",
+    "pg-pool": "^3.6.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "multer": "^1.4.5-lts.1",
+    "csv-parser": "^3.0.0",
+    "papaparse": "^5.4.1",
+    "redis": "^4.6.0",
+    "bull": "^4.11.0",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0",
+    "express-rate-limit": "^7.1.0",
+    "express-slow-down": "^2.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

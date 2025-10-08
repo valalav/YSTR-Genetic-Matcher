@@ -243,3 +243,5 @@ pnpm-lock.yaml
 
 # Ignore large data files
 # ftdna_haplo/data/get.json is now tracked by Git LFS
+nul
+*/nul

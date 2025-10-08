@@ -468,6 +468,57 @@ class HaploTree {
         
         return chain.reverse();
     }
+
+    isSubclade(haplogroupName, parentHaplogroupName) {
+        const haplogroup = this.findHaplogroup(haplogroupName);
+        const parentHaplogroup = this.findHaplogroup(parentHaplogroupName);
+
+        if (!haplogroup || !parentHaplogroup) {
+            return false;
+        }
+
+        let current = haplogroup;
+        while (current) {
+            if (current.haplogroupId === parentHaplogroup.haplogroupId) {
+                return true;
+            }
+            if (!current.parentId) {
+                break;
+            }
+            current = this.haplogroups[current.parentId];
+        }
+
+        return false;
+    }
+
+    getAllSubclades(parentHaplogroupName) {
+        const parentHaplogroup = this.findHaplogroup(parentHaplogroupName);
+        if (!parentHaplogroup) {
+            return [];
+        }
+
+        const subclades = new Set();
+        const queue = [parentHaplogroup.haplogroupId];
+        
+        subclades.add(parentHaplogroup.name);
+
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            const currentHaplo = this.haplogroups[currentId];
+
+            if (currentHaplo && currentHaplo.children && Array.isArray(currentHaplo.children)) {
+                for (const childId of currentHaplo.children) {
+                    const childHaplo = this.haplogroups[childId];
+                    if (childHaplo) {
+                        subclades.add(childHaplo.name);
+                        queue.push(childId);
+                    }
+                }
+            }
+        }
+        
+        return Array.from(subclades);
+    }
 }
 
 module.exports = { HaploTree };
