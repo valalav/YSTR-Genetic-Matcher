@@ -1,149 +1,148 @@
 // STR Marker Mutation Rates
-// Based on FTDNA/YFull scientific research data
-// Lower rate = slower mutation (more stable, ancestral markers)
-// Higher rate = faster mutation (less stable, recent divergence markers)
+// Based on FTDNA scientific research data
+// Lower speed place = slower mutation (more stable, ancestral markers)
+// Higher speed place = faster mutation (less stable, recent divergence markers)
 
 export interface MarkerMutationRate {
   marker: string;
-  rate: number; // Mutations per generation (lower = slower)
-  category: 'very-slow' | 'slow' | 'medium' | 'fast' | 'very-fast';
+  speedPlace: number; // 1 = slowest, 111 = fastest
 }
 
-// Mutation rates per generation (×10^-3)
-// Sorted by mutation rate: slow → fast
+// Mutation speed ranking from FTDNA data
+// Place 1 = slowest (most stable) → Place 111 = fastest (most variable)
 export const markerMutationRates: Record<string, number> = {
-  // Very slow markers (0.0-0.5 per 1000 generations) - Ancestral, most stable
-  'DYS426': 0.07,
-  'DYS388': 0.09,
-  'DYS426': 0.10,
-  'DYS441': 0.12,
-  'DYS472': 0.15,
+  // Very slow markers (places 1-20) - Ancestral, most stable
+  'DYS472': 1,
+  'DYS436': 2,
+  'DYS425': 3,
+  'DYS568': 4,
+  'DYS490': 5,
+  'DYS426': 6,
+  'DYS455': 7,
+  'DYS632': 8,
+  'DYS494': 9,
+  'DYS450': 10,
+  'DYS435': 11,
+  'DYS593': 12,
+  'DYS640': 13,
+  'DYS492': 14,
+  'DYS641': 15,
+  'DYS594': 16,
+  'DYS726': 17,
+  'DYS388': 18,
+  'DYS636': 19,
+  'DYS638': 20,
 
-  // Slow markers (0.5-1.5) - Stable, good for deep ancestry
-  'DYS393': 0.50,
-  'DYS390': 0.55,
-  'DYS391': 0.60,
-  'DYS389i': 0.65,
-  'DYS392': 0.70,
-  'DYS437': 0.75,
-  'DYS438': 0.80,
-  'DYS425': 0.82,
-  'DYS505': 0.85,
-  'DYS522': 0.88,
+  // Slow markers (places 21-40)
+  'DYS454': 21,
+  'DYS575': 22,
+  'DYS462': 23,
+  'DYS434': 24,
+  'DYS590': 25,
+  'DYS438': 26,
+  'DYS392': 27,
+  'DYS459': 28, // Combined a/b
+  'DYF395S1': 29, // Combined a/b
+  'DYS578': 31,
+  'DYS617': 32,
+  'DYS716': 33,
+  'DYS445': 34,
+  'DYS393': 35,
+  'DYS717': 36,
+  'DYS437': 37,
+  'DYS589': 38,
+  'DYS487': 39,
+  'DYS389i': 40,
 
-  // Medium markers (1.5-3.0) - Balanced
-  'DYS19': 0.90,
-  'DYS389ii': 1.00,
-  'DYS454': 1.10,
-  'DYS455': 1.20,
-  'DYS442': 1.25,
-  'DYS447': 1.30,
-  'DYS460': 1.35,
-  'DYS461': 1.40,
-  'DYS462': 1.45,
-  'DYS434': 1.50,
-  'DYS435': 1.55,
-  'DYS436': 1.60,
-  'Y-GATA-H4': 1.65,
-  'DYS450': 1.70,
-  'DYS463': 1.75,
-  'DYS520': 1.80,
-  'DYS607': 1.85,
-  'DYS576': 1.90,
-  'DYS570': 1.95,
+  // Medium markers (places 41-70)
+  'DYS556': 41,
+  'DYS531': 42,
+  'DYS537': 43,
+  'DYF406S1': 44,
+  'DYS511': 45,
+  'DYS572': 46,
+  'DYS464': 48, // Combined a/b/c/d (average ~48)
+  'DYS452': 49,
+  'Y-GGAAT-1B07': 50,
+  'DYS497': 52,
+  'DYS587': 53,
+  'DYS533': 54,
+  'DYS540': 55,
+  'DYS561': 56,
+  'DYS448': 57,
+  'DYS495': 59,
+  'DYS461': 60,
+  'DYS520': 61,
+  'DYS513': 62,
+  'DYS485': 63,
+  'DYS522': 64,
+  'Y-GATA-H4': 65,
+  'DYS525': 66,
+  'DYS19': 67,
+  'DYS444': 68,
+  'DYS565': 69,
+  'DYS460': 70,
 
-  // Fast markers (3.0-5.0) - Recent divergence
-  'DYS439': 2.00,
-  'DYS458': 2.10,
-  'DYS456': 2.20,
-  'DYS448': 2.30,
-  'DYS449': 2.40,
-  'DYS464': 2.50,
-  'DYS459': 2.60,
-  'CDY': 2.70,
-  'YCAII': 2.80,
-  'DYS385': 2.90,
-  'DYS413': 3.00,
-  'DYS444': 3.10,
-  'DYS445': 3.20,
-  'DYS446': 3.30,
-  'DYS452': 3.40,
-  'DYS481': 3.50,
-  'DYS485': 3.60,
-  'DYS487': 3.70,
-  'DYS490': 3.80,
-  'DYS492': 3.90,
+  // Fast markers (places 71-90)
+  'DYS413': 71, // Combined a/b
+  'DYS549': 73,
+  'YCAII': 77, // Combined a/b (average of 74 and 80)
+  'DYS441': 75,
+  'DYS390': 76,
+  'DYS391': 77,
+  'DYS635': 78,
+  'DYS389ii': 79,
+  'DYS463': 82,
+  'DYS643': 83,
+  'DYS607': 84,
+  'DYS557': 85,
+  'DYS385': 86, // Combined a/b (average of 86 and 97)
+  'DYS446': 87,
+  'DYS439': 88,
+  'DYS505': 89,
+  'DYS504': 90,
 
-  // Very fast markers (5.0+) - High mutation, recent events
-  'DYS494': 4.00,
-  'DYS495': 4.10,
-  'DYS497': 4.20,
-  'DYS504': 4.30,
-  'DYS511': 4.40,
-  'DYS513': 4.50,
-  'DYS525': 4.60,
-  'DYS531': 4.70,
-  'DYS532': 4.80,
-  'DYS533': 4.90,
-  'DYS534': 5.00,
-  'DYS537': 5.10,
-  'DYS540': 5.20,
-  'DYS549': 5.30,
-  'DYS552': 5.40,
-  'DYS556': 5.50,
-  'DYS557': 5.60,
-  'DYS561': 5.70,
-  'DYS565': 5.80,
-  'DYS568': 5.90,
-  'DYS572': 6.00,
-  'DYS575': 6.10,
-  'DYS578': 6.20,
-  'DYS587': 6.30,
-  'DYS589': 6.40,
-  'DYS590': 6.50,
-  'DYS593': 6.60,
-  'DYS594': 6.70,
-  'DYS617': 6.80,
-  'DYS632': 6.90,
-  'DYS635': 7.00,
-  'DYS636': 7.10,
-  'DYS638': 7.20,
-  'DYS640': 7.30,
-  'DYS641': 7.40,
-  'DYS643': 7.50,
-  'DYS650': 7.60,
-  'DYS710': 7.70,
-  'DYS712': 7.80,
-  'DYS714': 7.90,
-  'DYS715': 8.00,
-  'DYS716': 8.10,
-  'DYS717': 8.20,
-  'DYS726': 8.30,
-  'DYF395S1': 8.40,
-  'DYF406S1': 8.50,
-  'Y-GATA-A10': 8.60,
-  'Y-GGAAT-1B07': 8.70,
+  // Very fast markers (places 91-111) - High mutation, recent events
+  'DYS510': 91,
+  'DYS534': 92,
+  'DYS447': 93,
+  'Y-GATA-A10': 94,
+  'DYS715': 95,
+  'DYS532': 96,
+  'DYS552': 98,
+  'DYS650': 99,
+  'DYS481': 100,
+  'DYS442': 101,
+  'DYS456': 102,
+  'DYS714': 103,
+  'DYS570': 104,
+  'DYS576': 105,
+  'DYS458': 106,
+  'DYS712': 107,
+  'CDY': 109, // Combined a/b (average of 108 and 110)
+  'DYS449': 109,
+  'DYS710': 111,
 };
-
-// Get mutation rate category
-export function getMutationCategory(rate: number): 'very-slow' | 'slow' | 'medium' | 'fast' | 'very-fast' {
-  if (rate < 0.5) return 'very-slow';
-  if (rate < 1.5) return 'slow';
-  if (rate < 3.0) return 'medium';
-  if (rate < 5.0) return 'fast';
-  return 'very-fast';
-}
 
 // Get sorted markers by mutation rate (slow → fast)
 export function getMarkersSortedByMutationRate(markers: string[]): string[] {
   return [...markers].sort((a, b) => {
     const rateA = markerMutationRates[a] ?? 999; // Unknown markers go to end
     const rateB = markerMutationRates[b] ?? 999;
-    return rateA - rateB;
+    return rateA - rateB; // Lower place = slower = leftmost
   });
 }
 
-// Get marker mutation rate
-export function getMarkerMutationRate(marker: string): number {
-  return markerMutationRates[marker] ?? 5.0; // Default to medium-fast if unknown
+// Get marker mutation speed place
+export function getMarkerMutationPlace(marker: string): number {
+  return markerMutationRates[marker] ?? 999; // Default to end if unknown
+}
+
+// Get mutation category based on place
+export function getMutationCategory(place: number): 'very-slow' | 'slow' | 'medium' | 'fast' | 'very-fast' {
+  if (place <= 20) return 'very-slow';
+  if (place <= 40) return 'slow';
+  if (place <= 70) return 'medium';
+  if (place <= 90) return 'fast';
+  return 'very-fast';
 }
