@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import type { STRMatch, STRProfile } from '@/utils/constants';
 import { calculateMarkerDifference } from '@/utils/calculations';
 import { palindromes } from '@/utils/constants';
+import { getMarkersSortedByMutationRate } from '@/utils/mutation-rates';
 
 interface AdvancedMatchesTableProps {
   matches: STRMatch[];
@@ -130,21 +131,8 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       });
     });
 
-    // Sort by COMMON_STR_MARKERS order, then alphabetically
-    return relevantMarkers.sort((a, b) => {
-      const aIndex = COMMON_STR_MARKERS.indexOf(a);
-      const bIndex = COMMON_STR_MARKERS.indexOf(b);
-
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      } else if (aIndex !== -1) {
-        return -1;
-      } else if (bIndex !== -1) {
-        return 1;
-      } else {
-        return a.localeCompare(b);
-      }
-    });
+    // Sort by mutation rate: slow (stable, ancestral) → fast (recent divergence)
+    return getMarkersSortedByMutationRate(relevantMarkers);
   }, [query, matches]);
 
   // Показываем ВСЕ различающиеся маркеры (без ограничений)
