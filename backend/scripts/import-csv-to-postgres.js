@@ -70,11 +70,12 @@ function parseArgs() {
 function extractMarkers(row) {
   const markers = {};
   const excludeKeys = [
-    'kitnumber', 'kit_number', 'kit number', 'kitno',
-    'name', 'fullname', 'full_name',
-    'country', 'location',
-    'haplogroup', 'haplo', 'clade',
-    'source', 'project', 'database'
+    'kitnumber', 'kit_number', 'kit number', 'kitno', '-', '№',
+    'name', 'fullname', 'full_name', 'full name', 'paternal ancestor name',
+    'country', 'location', 'lacation',
+    'haplogroup', 'haplo', 'clade', 'ftdna hg', 'yfull', 'ftdna tree link', 'yfull_tree',
+    'source', 'project', 'database', 'lab', 'mtdna',
+    'фамилия', 'широта', 'долгота', 'субэтнос', 'гг1', 'гг2', 'гг3', 'гг4', 'гг5'
   ];
 
   Object.keys(row).forEach(key => {
@@ -82,6 +83,11 @@ function extractMarkers(row) {
 
     // Skip excluded keys and empty values
     if (excludeKeys.includes(lowerKey)) {
+      return;
+    }
+
+    // Skip non-DYS markers (only allow DYS* and Y-* markers)
+    if (!key.toUpperCase().startsWith('DYS') && !key.toUpperCase().startsWith('Y-') && !key.toUpperCase().startsWith('CDY')) {
       return;
     }
 
@@ -97,10 +103,10 @@ function extractMarkers(row) {
 // Transform CSV row to profile object
 function transformRow(row, defaultHaplogroup) {
   const profile = {
-    kitNumber: row.kitNumber || row.kit_number || row.KitNumber || row['Kit Number'] || row.kitno || row.KitNo,
-    name: row.name || row.Name || row.fullname || row.FullName || row.full_name || '',
-    country: row.country || row.Country || row.location || row.Location || '',
-    haplogroup: row.haplogroup || row.Haplogroup || row.Haplo || row.clade || row.Clade || defaultHaplogroup || '',
+    kitNumber: row.kitNumber || row.kit_number || row.KitNumber || row['Kit Number'] || row.kitno || row.KitNo || row['-'],
+    name: row.name || row.Name || row.fullname || row.FullName || row.full_name || row['Full Name'] || '',
+    country: row.country || row.Country || row.location || row.Location || row.Lacation || '',
+    haplogroup: row.haplogroup || row.Haplogroup || row.Haplo || row.clade || row.Clade || row['FTDNA HG'] || row.Yfull || defaultHaplogroup || '',
     markers: extractMarkers(row)
   };
 
@@ -256,12 +262,40 @@ async function importCSV(options) {
 
       process.stdout.write(`\r📥 Importing... ${progress}/${profiles.length} (${percent}%)`);
 
+      // Filter out any profiles with empty kit numbers (safety check)
+      const validBatch = batch.filter(p => p.kitNumber && p.kitNumber.trim() !== '');
+
+      if (validBatch.length === 0) {
+        console.log(`\n⚠️  Skipped empty batch at position ${i}`);
+        continue;
+      }
+
+      // Debug: log first profile in first batch
+      if (i === 0 && validBatch.length > 0) {
+        console.log(`\n🔍 First profile to insert:`, JSON.stringify(validBatch[0], null, 2).substring(0, 200));
+      }
+
+      // Convert camelCase keys to snake_case for SQL
+      const sqlBatch = validBatch.map(profile => ({
+        kit_number: profile.kitNumber,
+        name: profile.name,
+        country: profile.country,
+        haplogroup: profile.haplogroup,
+        markers: profile.markers
+      }));
+
       const result = await executeQuery(
         'SELECT bulk_insert_profiles($1)',
-        [JSON.stringify(batch)]
+        [JSON.stringify(sqlBatch)]
       );
 
-      inserted += result.rows[0].bulk_insert_profiles;
+      const batchInserted = result.rows[0].bulk_insert_profiles;
+      inserted += batchInserted;
+
+      // Debug: log if batch returned 0
+      if (batchInserted === 0) {
+        console.log(`\n⚠️  Batch at ${i} returned 0 inserts (${validBatch.length} profiles in batch)`);
+      }
     }
 
     console.log(''); // New line after progress
@@ -275,7 +309,13 @@ async function importCSV(options) {
 
     // Refresh materialized view
     console.log('🔄 Refreshing statistics...');
-    await executeQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY marker_statistics');
+    try {
+      await executeQuery('REFRESH MATERIALIZED VIEW CONCURRENTLY marker_statistics');
+    } catch (err) {
+      // Fallback to non-concurrent refresh if concurrent fails
+      console.log('⚠️  Concurrent refresh failed, using regular refresh...');
+      await executeQuery('REFRESH MATERIALIZED VIEW marker_statistics');
+    }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 

@@ -114,7 +114,13 @@ app.use('/api/haplogroups', require('./routes/haplogroups'));
 // Database routes (haplogroup lists, statistics)
 app.use('/api/databases', require('./routes/databases'));
 
+// Sample management routes (with API key auth)
+app.use('/api/samples', require('./routes/samples'));
 
+// Admin API keys management (with master key auth) - must be BEFORE /api/admin
+app.use('/api/admin/keys', require('./routes/keys'));
+// Admin audit log (with master key auth) - must be BEFORE /api/admin
+app.use('/api/admin/audit', require('./routes/audit'));
 // Admin routes (statistics, maintenance)
 app.use('/api/admin', require('./routes/admin'));
 

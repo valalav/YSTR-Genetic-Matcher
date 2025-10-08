@@ -207,7 +207,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
             рџ§¬ YSTR Genetic Matcher
           </h1>
           <p className="text-xs text-gray-600">
-            Search through {dbStats ? parseInt(dbStats.totalProfiles).toLocaleString() : '162,000+'} YSTR profiles
+            Search through {dbStats ? parseInt(dbStats.totalProfiles).toLocaleString() : 'Loading...'} YSTR profiles
           </p>
         </div>
 
