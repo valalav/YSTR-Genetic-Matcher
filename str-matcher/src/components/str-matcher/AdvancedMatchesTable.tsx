@@ -30,10 +30,48 @@ interface MarkerRarity {
 const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
+  const [hiddenKitNumbers, setHiddenKitNumbers] = useState<Set<string>>(() => {
+    // Load hidden kit numbers from localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hiddenKitNumbers');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+    return new Set();
+  });
 
-  // Calculate marker rarity based on frequency in matches
+  // Hide/unhide kit number
+  const toggleHideKitNumber = useCallback((kitNumber: string) => {
+    setHiddenKitNumbers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(kitNumber)) {
+        newSet.delete(kitNumber);
+      } else {
+        newSet.add(kitNumber);
+      }
+      // Save to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('hiddenKitNumbers', JSON.stringify(Array.from(newSet)));
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Clear all hidden kit numbers
+  const clearHiddenKitNumbers = useCallback(() => {
+    setHiddenKitNumbers(new Set());
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('hiddenKitNumbers');
+    }
+  }, []);
+
+  // Filter out hidden matches
+  const visibleMatches = useMemo(() => {
+    return matches.filter(match => !hiddenKitNumbers.has(match.profile.kitNumber));
+  }, [matches, hiddenKitNumbers]);
+
+  // Calculate marker rarity based on frequency in visible matches
   const markerRarities = useMemo(() => {
-    if (!query || matches.length === 0) return {};
+    if (!query || visibleMatches.length === 0) return {};
 
     const rarities: Record<string, Record<string, MarkerRarity>> = {};
 
@@ -43,11 +81,11 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       const queryValue = query.markers[marker];
 
       // Count how many matches have the same value for this marker
-      const matchingCount = matches.filter(match =>
+      const matchingCount = visibleMatches.filter(match =>
         match.profile?.markers[marker] === queryValue
       ).length;
 
-      const frequency = matchingCount / matches.length;
+      const frequency = matchingCount / visibleMatches.length;
 
       let level: MarkerRarity['level'] = 'common';
       if (frequency <= 0.04) level = 'extremely-rare';
@@ -70,10 +108,25 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
     // ВСЕГДА показываем только маркеры с различиями
     const relevantMarkers = queryMarkers.filter(marker => {
       const queryValue = query.markers[marker];
-      // Показываем маркер только если он отличается хотя бы у одного профиля
+      const hasQueryValue = queryValue && queryValue.trim() !== '';
+
+      // Показываем маркер если он отличается хотя бы у одного профиля
       return matches.some(match => {
         const matchValue = match.profile?.markers[marker];
-        return matchValue && matchValue !== queryValue;
+        const hasMatchValue = matchValue && matchValue.trim() !== '';
+
+        // Различие если:
+        // 1. Оба значения есть, но они разные
+        // 2. У query есть значение, а у match нет
+        // 3. У query нет значения, а у match есть
+        if (hasQueryValue && hasMatchValue) {
+          return matchValue !== queryValue;
+        } else if (hasQueryValue && !hasMatchValue) {
+          return true; // Query имеет значение, match не имеет - это различие
+        } else if (!hasQueryValue && hasMatchValue) {
+          return true; // Match имеет значение, query не имеет - это различие
+        }
+        return false; // Оба пустые - не различие
       });
     });
 
@@ -123,17 +176,17 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
     const activeFilters = Object.entries(markerFilters).filter(([_, active]) => active);
 
     if (activeFilters.length === 0) {
-      return matches;
+      return visibleMatches;
     }
 
-    return matches.filter(match => {
+    return visibleMatches.filter(match => {
       return activeFilters.every(([marker, _]) => {
         const queryValue = query?.markers[marker];
         const matchValue = match.profile?.markers[marker];
         return queryValue && matchValue && queryValue === matchValue;
       });
     });
-  }, [matches, markerFilters, query]);
+  }, [visibleMatches, markerFilters, query]);
 
   if (!matches || matches.length === 0) {
     return (
@@ -152,15 +205,28 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       {/* Simple Header like in original */}
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
         <h2 className="text-lg font-bold text-gray-800 mb-2">
-          🎯 Генетические совпадения ({filteredMatches.length} {filteredMatches.length !== matches.length && `из ${matches.length}`} найдено)
+          🎯 Генетические совпадения ({filteredMatches.length} {filteredMatches.length !== visibleMatches.length && `из ${visibleMatches.length}`} найдено)
         </h2>
         <p className="text-sm text-gray-600">
-          {filteredMatches.length !== matches.length ? (
-            <>Отфильтровано {filteredMatches.length} из {matches.length} совпадений</>
+          {filteredMatches.length !== visibleMatches.length ? (
+            <>Отфильтровано {filteredMatches.length} из {visibleMatches.length} совпадений</>
           ) : (
-            <>Найдено {matches.length} генетических совпадений</>
+            <>Найдено {visibleMatches.length} генетических совпадений</>
+          )}
+          {hiddenKitNumbers.size > 0 && (
+            <span className="ml-2 text-orange-600">
+              (скрыто: {hiddenKitNumbers.size})
+            </span>
           )}
         </p>
+        {hiddenKitNumbers.size > 0 && (
+          <button
+            onClick={clearHiddenKitNumbers}
+            className="mt-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Показать все скрытые ({hiddenKitNumbers.size})
+          </button>
+        )}
       </div>
 
       {/* Matches Table */}
@@ -173,6 +239,9 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
               <tr className="bg-gradient-to-r from-slate-800 via-blue-900 to-indigo-900 text-white">
                 <th className="sticky left-0 bg-gradient-to-r from-slate-800 to-blue-900 border-r border-blue-700 px-2 py-2 text-center z-10 w-[100px] max-w-[100px] font-bold text-sm">
                   Набор
+                </th>
+                <th className="border-r border-blue-700 px-2 py-2 text-center w-[50px] max-w-[50px] font-bold text-sm">
+
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[150px] max-w-[150px] font-bold text-sm">
                   Имя
@@ -231,6 +300,9 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                 <tr className="bg-blue-100 border-b-2 border-blue-400">
                   <td className="sticky left-0 bg-blue-100 border-r border-gray-300 px-2 py-2 text-center z-10 w-[100px] max-w-[100px]">
                     <span className="font-bold text-blue-800">{query.kitNumber || 'Query'}</span>
+                  </td>
+                  <td className="border-r border-gray-300 px-2 py-2 text-center w-[50px] max-w-[50px]">
+                    {/* Empty cell for query row */}
                   </td>
                   <td className="border-r border-gray-300 px-2 py-2 text-center w-[150px] max-w-[150px]">
                     <span className="text-sm font-semibold">{query.name || 'Query Profile'}</span>
@@ -293,6 +365,17 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                         {match.profile?.kitNumber || 'N/A'}
                       </span>
                     )}
+                  </td>
+
+                  {/* Hide Button */}
+                  <td className="border-r border-gray-300 px-1 py-2 text-center w-[50px] max-w-[50px]">
+                    <button
+                      onClick={() => match.profile?.kitNumber && toggleHideKitNumber(match.profile.kitNumber)}
+                      className="text-red-600 hover:text-red-800 cursor-pointer font-bold text-lg leading-none"
+                      title="Скрыть этот образец"
+                    >
+                      ×
+                    </button>
                   </td>
 
                   {/* Name */}

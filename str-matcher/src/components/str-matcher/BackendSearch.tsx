@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useBackendAPI } from '@/hooks/useBackendAPI';
 import type { STRMatch, STRProfile } from '@/utils/constants';
+import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
 import HaplogroupSelector from './HaplogroupSelector';
@@ -56,12 +57,25 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         return;
       }
 
-      setProfile(foundProfile);
-      setCustomMarkers(foundProfile.markers);
+      // Filter markers based on selected panel
+      const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
+      const panelMarkerSet = new Set(panelMarkers);
+      const filteredMarkers = Object.fromEntries(
+        Object.entries(foundProfile.markers).filter(([marker]) =>
+          panelMarkerSet.has(marker as any)
+        )
+      );
 
-      // Then search for matches using the profile's markers
+      // Set profile with filtered markers only
+      setProfile({
+        ...foundProfile,
+        markers: filteredMarkers
+      });
+      setCustomMarkers(filteredMarkers);
+
+      // Then search for matches using only the panel's markers
       const searchMatches = await findMatches({
-        markers: foundProfile.markers,
+        markers: filteredMarkers,
         maxDistance,
         limit: maxResults,
         markerCount,
@@ -79,7 +93,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [kitNumber, maxDistance, maxResults, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
+  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
 
   const handleSearchByMarkers = useCallback(async () => {
     const markersToSearch = Object.fromEntries(
@@ -92,8 +106,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     }
 
     try {
+      // Filter markers based on selected panel
+      const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
+      const panelMarkerSet = new Set(panelMarkers);
+      const filteredMarkers = Object.fromEntries(
+        Object.entries(markersToSearch).filter(([marker]) =>
+          panelMarkerSet.has(marker as any)
+        )
+      );
+
       const searchMatches = await findMatches({
-        markers: markersToSearch,
+        markers: filteredMarkers,
         maxDistance,
         limit: maxResults,
         markerCount,
@@ -103,19 +126,19 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       setMatches(searchMatches);
       onMatchesFound?.(searchMatches);
 
-      // Create a temporary profile for display
+      // Create a temporary profile for display (with filtered markers)
       setProfile({
         kitNumber: 'Custom Search',
         name: 'Custom Marker Search',
         country: '',
         haplogroup: '',
-        markers: markersToSearch,
+        markers: filteredMarkers,
       });
 
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [customMarkers, maxDistance, maxResults, findMatches, onMatchesFound]);
+  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
 
   const handleMarkerChange = useCallback((marker: string, value: string) => {
     setCustomMarkers(prev => ({

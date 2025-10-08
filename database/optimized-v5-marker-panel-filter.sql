@@ -97,12 +97,13 @@ BEGIN
             (haplogroup_filter IS NULL
                OR (include_subclades AND p.haplogroup LIKE haplogroup_filter || '%')
                OR (NOT include_subclades AND p.haplogroup = haplogroup_filter))
-            -- Quick marker overlap check using GIN
-            AND p.markers ?& query_marker_keys
+            -- Quick marker overlap check using GIN (at least one common marker)
+            AND p.markers ?| query_marker_keys
         -- Limit early to avoid scanning too many rows
+        -- Увеличен лимит чтобы охватить всю базу данных
         LIMIT CASE
-            WHEN haplogroup_filter IS NULL THEN 50000
-            ELSE 100000
+            WHEN haplogroup_filter IS NULL THEN 500000
+            ELSE 500000
         END
     ),
     distances AS (

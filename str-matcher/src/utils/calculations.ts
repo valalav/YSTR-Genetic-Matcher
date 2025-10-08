@@ -32,34 +32,24 @@ export function calculateMarkerDifference(
 ): number {
   if (!value1 || !value2) return 0;
 
+  // Simple string comparison (matches PostgreSQL calculate_marker_distance logic)
+  // This ensures consistency between frontend display and backend calculations
+  if (value1 === value2) {
+    return 0;
+  }
+
   if (!isPalindrome) {
     const val1 = normalizeMarkerValue(value1);
     const val2 = normalizeMarkerValue(value2);
-    if (isNaN(val1) || isNaN(val2)) return 0;
+    if (isNaN(val1) || isNaN(val2)) return 1; // Different non-numeric values
 
-    // Для обычных маркеров - просто абсолютная разница с ограничением до 2
-    return mode.type === 'standard' ? 
-      Math.min(Math.abs(val2 - val1), 2) : 
-      Math.abs(val2 - val1);
+    // For standard markers - return the absolute difference, capped at 2 (FTDNA standard)
+    return Math.min(Math.abs(val2 - val1), 2);
   }
 
-  // Для полиндромов
-  const vals1 = value1.split(/[-,]/).map(Number);
-  const vals2 = value2.split(/[-,]/).map(Number);
-  
-  if (vals1.length !== vals2.length) return 0;
-
-  let totalDiff = 0;
-  
-  // Считаем разницу для каждой пары значений
-  for (let i = 0; i < vals1.length; i++) {
-    if (isNaN(vals1[i]) || isNaN(vals2[i])) return 0;
-    const diff = Math.abs(vals2[i] - vals1[i]);
-    totalDiff += mode.type === 'standard' ? Math.min(diff, 2) : diff;
-  }
-  
-  // Для полиндрома общая сумма тоже должна быть ограничена до 2!
-  return mode.type === 'standard' ? Math.min(totalDiff, 2) : totalDiff;
+  // For palindromic markers - if strings differ, return 1
+  // This matches the PostgreSQL behavior where palindromic markers count as 1 marker
+  return 1;
 }
 export interface GeneticDistanceResult {
   distance: number;

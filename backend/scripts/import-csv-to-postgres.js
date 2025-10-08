@@ -86,8 +86,13 @@ function extractMarkers(row) {
       return;
     }
 
-    // Skip non-DYS markers (only allow DYS* and Y-* markers)
-    if (!key.toUpperCase().startsWith('DYS') && !key.toUpperCase().startsWith('Y-') && !key.toUpperCase().startsWith('CDY')) {
+    // Skip non-STR markers (only allow DYS*, DYF*, Y-*, CDY*, YCAII)
+    const upperKey = key.toUpperCase();
+    if (!upperKey.startsWith('DYS') &&
+        !upperKey.startsWith('DYF') &&
+        !upperKey.startsWith('Y-') &&
+        !upperKey.startsWith('CDY') &&
+        upperKey !== 'YCAII') {
       return;
     }
 
