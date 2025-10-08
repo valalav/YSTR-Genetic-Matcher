@@ -12,6 +12,7 @@ interface AdvancedMatchesTableProps {
   showOnlyDifferences?: boolean;
   onKitNumberClick?: (kitNumber: string) => void;
   onRemoveMarker?: (marker: string) => void;
+  onHaplogroupClick?: (haplogroup: string) => void;
 }
 
 // Common STR markers in order of importance
@@ -28,7 +29,7 @@ interface MarkerRarity {
   level: 'common' | 'uncommon' | 'rare' | 'very-rare' | 'extremely-rare';
 }
 
-const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker }) => {
+const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [hiddenKitNumbers, setHiddenKitNumbers] = useState<Set<string>>(() => {
@@ -382,9 +383,19 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
 
                   {/* Haplogroup */}
                   <td className="border-r border-gray-300 px-2 py-2 text-center w-[150px] max-w-[150px]">
-                    <span className="text-sm font-mono text-purple-600">
-                      {match.profile?.haplogroup || ''}
-                    </span>
+                    {onHaplogroupClick && match.profile?.haplogroup ? (
+                      <button
+                        onClick={() => match.profile?.haplogroup && onHaplogroupClick(match.profile.haplogroup)}
+                        className="text-sm font-mono text-purple-600 hover:text-purple-800 hover:underline cursor-pointer transition-colors"
+                        title={`Filter by haplogroup: ${match.profile.haplogroup}`}
+                      >
+                        {match.profile.haplogroup}
+                      </button>
+                    ) : (
+                      <span className="text-sm font-mono text-purple-600">
+                        {match.profile?.haplogroup || ''}
+                      </span>
+                    )}
                   </td>
 
                   {/* Genetic Distance */}

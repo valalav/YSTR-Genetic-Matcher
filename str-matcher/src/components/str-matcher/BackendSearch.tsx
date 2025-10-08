@@ -249,6 +249,24 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     }
   }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
 
+  const handleHaplogroupClick = useCallback((haplogroup: string) => {
+    // Set the selected haplogroup in the selector
+    setSelectedHaplogroup(haplogroup);
+
+    // If we have a current profile, re-run the search with the new haplogroup filter
+    if (profile && profile.kitNumber !== 'Custom Search') {
+      // Trigger search by kit number with the new haplogroup
+      setTimeout(() => {
+        handleSearchByKit();
+      }, 100);
+    } else if (profile && Object.keys(customMarkers).length > 0) {
+      // Trigger search by markers with the new haplogroup
+      setTimeout(() => {
+        handleSearchByMarkers();
+      }, 100);
+    }
+  }, [profile, customMarkers, handleSearchByKit, handleSearchByMarkers]);
+
   return (<>
     <div className="pb-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="max-w-7xl mx-auto px-4 py-2 space-y-2">
@@ -469,6 +487,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               showOnlyDifferences={true}
               onKitNumberClick={handleKitNumberClick}
               onRemoveMarker={handleRemoveMarker}
+              onHaplogroupClick={handleHaplogroupClick}
             />
         </div>
       )}
