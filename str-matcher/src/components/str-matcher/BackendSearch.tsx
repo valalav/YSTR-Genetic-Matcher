@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useBackendAPI } from '@/hooks/useBackendAPI';
+import { useHaplogroupFiltering } from '@/hooks/useHaplogroupFiltering';
 import type { STRMatch, STRProfile } from '@/utils/constants';
 import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
@@ -19,6 +20,7 @@ interface BackendSearchProps {
 
 const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const { findMatches, getProfile, getDatabaseStats, loading, error } = useBackendAPI();
+  const { filterMatchesByHaplogroup, filtering: haplogroupFiltering } = useHaplogroupFiltering();
 
   const [kitNumber, setKitNumber] = useState('');
   const [profile, setProfile] = useState<STRProfile | null>(null);
@@ -74,18 +76,25 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       setCustomMarkers(filteredMarkers);
 
       // Then search for matches using only the panel's markers
+      // Note: We pass haplogroupFilter to backend, but also do FTDNA filtering on frontend
       const searchMatches = await findMatches({
         markers: filteredMarkers,
         maxDistance,
         limit: maxResults,
         markerCount,
-        haplogroupFilter: selectedHaplogroup || undefined,
+        haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
       // Filter out the query profile itself from results
-      const filteredMatches = searchMatches.filter(match =>
+      let filteredMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
+
+      // Apply FTDNA haplogroup tree filtering if haplogroup selected
+      if (selectedHaplogroup && selectedHaplogroup !== '') {
+        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
+        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
+      }
 
       setMatches(filteredMatches);
       onMatchesFound?.(filteredMatches);
@@ -93,7 +102,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
+  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
 
   const handleSearchByMarkers = useCallback(async () => {
     const markersToSearch = Object.fromEntries(
@@ -120,11 +129,18 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         maxDistance,
         limit: maxResults,
         markerCount,
-        haplogroupFilter: selectedHaplogroup || undefined,
+        haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      setMatches(searchMatches);
-      onMatchesFound?.(searchMatches);
+      // Apply FTDNA haplogroup tree filtering if haplogroup selected
+      let filteredSearchMatches = searchMatches;
+      if (selectedHaplogroup && selectedHaplogroup !== '') {
+        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
+        filteredSearchMatches = await filterMatchesByHaplogroup(searchMatches, selectedHaplogroup);
+      }
+
+      setMatches(filteredSearchMatches);
+      onMatchesFound?.(filteredSearchMatches);
 
       // Create a temporary profile for display (with filtered markers)
       setProfile({
@@ -138,7 +154,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
+  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
 
   const handleMarkerChange = useCallback((marker: string, value: string) => {
     setCustomMarkers(prev => ({
@@ -168,13 +184,19 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         maxDistance,
         limit: maxResults,
         markerCount,
-        haplogroupFilter: selectedHaplogroup || undefined,
+        haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
       // Фильтруем сам профиль из результатов
-      const filteredMatches = searchMatches.filter(match =>
+      let filteredMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
+
+      // Apply FTDNA haplogroup tree filtering if haplogroup selected
+      if (selectedHaplogroup && selectedHaplogroup !== '') {
+        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
+        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
+      }
 
       setMatches(filteredMatches);
       onMatchesFound?.(filteredMatches);
@@ -182,7 +204,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
+  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
 
   const handleRemoveMarker = useCallback(async (markerToRemove: string) => {
     if (!profile) return;
@@ -206,12 +228,18 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         maxDistance,
         limit: maxResults,
         markerCount,
-        haplogroupFilter: selectedHaplogroup || undefined,
+        haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      const filteredMatches = searchMatches.filter(match =>
+      let filteredMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== updatedProfile.kitNumber
       );
+
+      // Apply FTDNA haplogroup tree filtering if haplogroup selected
+      if (selectedHaplogroup && selectedHaplogroup !== '') {
+        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
+        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
+      }
 
       setMatches(filteredMatches);
       onMatchesFound?.(filteredMatches);
@@ -219,7 +247,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search after marker removal failed:', error);
     }
-  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
+  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
 
   return (<>
     <div className="pb-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -360,17 +388,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 </div>
                 <button
                   onClick={handleSearchByKit}
-                  disabled={loading || !kitNumber.trim()}
+                  disabled={loading || haplogroupFiltering || !kitNumber.trim()}
                   className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
-                  {loading ? (
+                  {loading || haplogroupFiltering ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Searching...</span>
+                      <span className="text-sm">{haplogroupFiltering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
-                      <span>рџ”Ќ</span>
+                      <span>рџ"Ќ</span>
                       <span className="text-sm">Search for Matches</span>
                     </div>
                   )}
@@ -390,13 +418,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 </div>
                 <button
                   onClick={handleSearchByMarkers}
-                  disabled={loading}
+                  disabled={loading || haplogroupFiltering}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
-                  {loading ? (
+                  {loading || haplogroupFiltering ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">Searching...</span>
+                      <span className="text-sm">{haplogroupFiltering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
