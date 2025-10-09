@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useBackendAPI } from '@/hooks/useBackendAPI';
-import { useHaplogroupFiltering } from '@/hooks/useHaplogroupFiltering';
 import type { STRMatch, STRProfile } from '@/utils/constants';
 import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
 import { Checkbox } from '@/components/ui/checkbox';
+import { processMatches } from '@/utils/calculations';
+import type { Match, Filters } from '@/types';
 
 interface BackendSearchProps {
   onMatchesFound?: (matches: STRMatch[]) => void;
@@ -20,11 +21,11 @@ interface BackendSearchProps {
 
 const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const { findMatches, getProfile, getDatabaseStats, loading, error } = useBackendAPI();
-  const { filterMatchesByHaplogroup, filtering: haplogroupFiltering } = useHaplogroupFiltering();
 
   const [kitNumber, setKitNumber] = useState('');
   const [profile, setProfile] = useState<STRProfile | null>(null);
   const [matches, setMatches] = useState<STRMatch[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<STRMatch[]>([]);
   const [maxDistance, setMaxDistance] = useState(25);
   const [maxResults, setMaxResults] = useState(150);
   const [markerCount, setMarkerCount] = useState<12 | 25 | 37 | 67 | 111>(37);
@@ -33,7 +34,10 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [searchMode, setSearchMode] = useState<'kit' | 'markers'>('kit');
   const [selectedHaplogroup, setSelectedHaplogroup] = useState('');
   const [includeSubclades, setIncludeSubclades] = useState(true);
+  const [showEmptyHaplogroups, setShowEmptyHaplogroups] = useState(false);
   const [tempHaplogroupFilter, setTempHaplogroupFilter] = useState('');
+  const [isFilterActive, setIsFilterActive] = useState(false);
+  const [filtering, setFiltering] = useState(false);
 
   // Load database stats on mount
   useEffect(() => {
@@ -88,23 +92,18 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       });
 
       // Filter out the query profile itself from results
-      let filteredMatches = searchMatches.filter(match =>
+      const cleanedMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
 
-      // Apply FTDNA haplogroup tree filtering if haplogroup selected
-      if (selectedHaplogroup && selectedHaplogroup !== '') {
-        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
-        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
-      }
-
-      setMatches(filteredMatches);
-      onMatchesFound?.(filteredMatches);
+      setMatches(cleanedMatches);
+      setFilteredMatches(cleanedMatches);
+      onMatchesFound?.(cleanedMatches);
 
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
+  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
 
   const handleSearchByMarkers = useCallback(async () => {
     const markersToSearch = Object.fromEntries(
@@ -134,15 +133,9 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      // Apply FTDNA haplogroup tree filtering if haplogroup selected
-      let filteredSearchMatches = searchMatches;
-      if (selectedHaplogroup && selectedHaplogroup !== '') {
-        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
-        filteredSearchMatches = await filterMatchesByHaplogroup(searchMatches, selectedHaplogroup);
-      }
-
-      setMatches(filteredSearchMatches);
-      onMatchesFound?.(filteredSearchMatches);
+      setMatches(searchMatches);
+      setFilteredMatches(searchMatches);
+      onMatchesFound?.(searchMatches);
 
       // Create a temporary profile for display (with filtered markers)
       setProfile({
@@ -156,7 +149,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
+  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
 
   const handleMarkerChange = useCallback((marker: string, value: string) => {
     setCustomMarkers(prev => ({
@@ -190,23 +183,18 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       });
 
       // Фильтруем сам профиль из результатов
-      let filteredMatches = searchMatches.filter(match =>
+      const cleanedMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
 
-      // Apply FTDNA haplogroup tree filtering if haplogroup selected
-      if (selectedHaplogroup && selectedHaplogroup !== '') {
-        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
-        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
-      }
-
-      setMatches(filteredMatches);
-      onMatchesFound?.(filteredMatches);
+      setMatches(cleanedMatches);
+      setFilteredMatches(cleanedMatches);
+      onMatchesFound?.(cleanedMatches);
 
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
+  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
 
   const handleRemoveMarker = useCallback(async (markerToRemove: string) => {
     if (!profile) return;
@@ -233,23 +221,18 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      let filteredMatches = searchMatches.filter(match =>
+      const cleanedMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== updatedProfile.kitNumber
       );
 
-      // Apply FTDNA haplogroup tree filtering if haplogroup selected
-      if (selectedHaplogroup && selectedHaplogroup !== '') {
-        console.log(`🔍 Applying FTDNA tree filtering for ${selectedHaplogroup}`);
-        filteredMatches = await filterMatchesByHaplogroup(filteredMatches, selectedHaplogroup);
-      }
-
-      setMatches(filteredMatches);
-      onMatchesFound?.(filteredMatches);
+      setMatches(cleanedMatches);
+      setFilteredMatches(cleanedMatches);
+      onMatchesFound?.(cleanedMatches);
 
     } catch (error) {
       console.error('Search after marker removal failed:', error);
     }
-  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, filterMatchesByHaplogroup, onMatchesFound]);
+  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
 
   const handleHaplogroupClick = useCallback((haplogroup: string) => {
     // Set the selected haplogroup in the selector
@@ -268,6 +251,83 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       }, 100);
     }
   }, [profile, customMarkers, handleSearchByKit, handleSearchByMarkers]);
+
+  // Apply haplogroup filter
+  const handleApplyFilter = useCallback(async () => {
+    if (!selectedHaplogroup || matches.length === 0) {
+      setFilteredMatches(matches);
+      setIsFilterActive(false);
+      return;
+    }
+
+    try {
+      setFiltering(true);
+      setIsFilterActive(true);
+
+      if (includeSubclades) {
+        // Convert STRMatch[] to Match[] for processMatches
+        const matchesForFilter: Match[] = matches.map(match => ({
+          id: match.profile.kitNumber,
+          name: match.profile.name || '',
+          haplogroup: match.profile.haplogroup,
+          markers: match.profile.markers,
+          distance: match.distance,
+          comparedMarkers: match.comparedMarkers,
+          identicalMarkers: match.identicalMarkers,
+          percentIdentical: match.percentIdentical
+        }));
+
+        const filters: Filters = {
+          haplogroups: [selectedHaplogroup],
+          includeSubclades: true
+        };
+
+        const filtered = await processMatches(matchesForFilter, filters);
+
+        // Convert back to STRMatch[]
+        const filteredSTRMatches = matches.filter(match =>
+          filtered.some(f => f.id === match.profile.kitNumber) ||
+          (!match.profile.haplogroup && showEmptyHaplogroups)
+        );
+
+        setFilteredMatches(filteredSTRMatches);
+      } else {
+        // Simple filtering without subclades
+        const filtered = matches.filter(match => {
+          const haplogroup = match.profile?.haplogroup;
+          if (!haplogroup) {
+            return showEmptyHaplogroups;
+          }
+          return haplogroup === selectedHaplogroup;
+        });
+
+        setFilteredMatches(filtered);
+      }
+    } catch (error) {
+      console.error('❌ Filter error:', error);
+      setFilteredMatches(matches);
+    } finally {
+      setFiltering(false);
+    }
+  }, [selectedHaplogroup, includeSubclades, showEmptyHaplogroups, matches]);
+
+  // Reset filter
+  const handleResetFilter = useCallback(() => {
+    setSelectedHaplogroup('');
+    setTempHaplogroupFilter('');
+    setIsFilterActive(false);
+    setFilteredMatches(matches);
+  }, [matches]);
+
+  // Determine which matches to display
+  const displayedMatches = isFilterActive ? filteredMatches : matches;
+
+  // Update filtered matches when main matches change
+  useEffect(() => {
+    if (!isFilterActive) {
+      setFilteredMatches(matches);
+    }
+  }, [matches, isFilterActive]);
 
   return (<>
     <div className="pb-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -421,31 +481,53 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   />
                 </div>
                 <button
-                  onClick={() => setSelectedHaplogroup(tempHaplogroupFilter)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-300 text-sm"
+                  onClick={() => {
+                    setSelectedHaplogroup(tempHaplogroupFilter);
+                    setTimeout(() => handleApplyFilter(), 100);
+                  }}
+                  disabled={filtering}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-300 text-sm disabled:opacity-50"
                 >
-                  Apply Filter
+                  {filtering ? 'Filtering...' : 'Apply Filter'}
                 </button>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="include-subclades"
-                  checked={includeSubclades}
-                  onCheckedChange={(checked) => {
-                    if (typeof checked === 'boolean') {
-                      setIncludeSubclades(checked);
-                    }
-                  }}
-                />
-                <label htmlFor="include-subclades" className="text-sm text-gray-700">
-                  Include subclades (e.g., R-M269 includes R-L21, R-U106, etc.)
-                </label>
+              <div className="flex gap-6">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-subclades"
+                    checked={includeSubclades}
+                    onCheckedChange={(checked) => {
+                      if (typeof checked === 'boolean') {
+                        setIncludeSubclades(checked);
+                      }
+                    }}
+                  />
+                  <label htmlFor="include-subclades" className="text-sm text-gray-700">
+                    Include subclades
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="show-empty-haplogroups"
+                    checked={showEmptyHaplogroups}
+                    onCheckedChange={(checked) => {
+                      if (typeof checked === 'boolean') {
+                        setShowEmptyHaplogroups(checked);
+                      }
+                    }}
+                  />
+                  <label htmlFor="show-empty-haplogroups" className="text-sm text-gray-700">
+                    Show empty haplogroups
+                  </label>
+                </div>
               </div>
 
-              {selectedHaplogroup && (
+              {selectedHaplogroup && isFilterActive && (
                 <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
                   🎯 Active filter: <strong>{selectedHaplogroup}</strong> {includeSubclades && '(with subclades)'}
+                  <span className="ml-2 text-gray-600">({displayedMatches.length} of {matches.length} matches)</span>
                 </div>
               )}
             </div>
@@ -464,13 +546,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 </div>
                 <button
                   onClick={handleSearchByKit}
-                  disabled={loading || haplogroupFiltering || !kitNumber.trim()}
+                  disabled={loading || filtering || !kitNumber.trim()}
                   className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
-                  {loading || haplogroupFiltering ? (
+                  {loading || filtering ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">{haplogroupFiltering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
+                      <span className="text-sm">{filtering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
@@ -494,13 +576,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 </div>
                 <button
                   onClick={handleSearchByMarkers}
-                  disabled={loading || haplogroupFiltering}
+                  disabled={loading || filtering}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
-                  {loading || haplogroupFiltering ? (
+                  {loading || filtering ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm">{haplogroupFiltering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
+                      <span className="text-sm">{filtering ? 'Filtering by haplogroup...' : 'Searching...'}</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
@@ -540,7 +622,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       {matches.length > 0 && (
         <div className="w-full bg-white shadow-lg mt-4 overflow-x-auto py-4">
             <AdvancedMatchesTable
-              matches={matches}
+              matches={displayedMatches}
               query={profile}
               showOnlyDifferences={true}
               onKitNumberClick={handleKitNumberClick}
