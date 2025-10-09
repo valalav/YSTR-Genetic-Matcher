@@ -253,8 +253,10 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   }, [profile, customMarkers, handleSearchByKit, handleSearchByMarkers]);
 
   // Apply haplogroup filter
-  const handleApplyFilter = useCallback(async () => {
-    if (!selectedHaplogroup || matches.length === 0) {
+  const handleApplyFilter = useCallback(async (haplogroupToFilter?: string) => {
+    const haplogroup = haplogroupToFilter || selectedHaplogroup;
+
+    if (!haplogroup || matches.length === 0) {
       setFilteredMatches(matches);
       setIsFilterActive(false);
       return;
@@ -278,7 +280,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         }));
 
         const filters: Filters = {
-          haplogroups: [selectedHaplogroup],
+          haplogroups: [haplogroup],
           includeSubclades: true
         };
 
@@ -294,11 +296,11 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       } else {
         // Simple filtering without subclades
         const filtered = matches.filter(match => {
-          const haplogroup = match.profile?.haplogroup;
-          if (!haplogroup) {
+          const matchHaplogroup = match.profile?.haplogroup;
+          if (!matchHaplogroup) {
             return showEmptyHaplogroups;
           }
-          return haplogroup === selectedHaplogroup;
+          return matchHaplogroup === haplogroup;
         });
 
         setFilteredMatches(filtered);
@@ -474,6 +476,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         setSelectedHaplogroup(tempHaplogroupFilter);
+                        handleApplyFilter(tempHaplogroupFilter);
                       }
                     }}
                     placeholder="Enter haplogroup (e.g., R-M269, J-M172)"
@@ -483,7 +486,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   onClick={() => {
                     setSelectedHaplogroup(tempHaplogroupFilter);
-                    setTimeout(() => handleApplyFilter(), 100);
+                    handleApplyFilter(tempHaplogroupFilter);
                   }}
                   disabled={filtering}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-300 text-sm disabled:opacity-50"
