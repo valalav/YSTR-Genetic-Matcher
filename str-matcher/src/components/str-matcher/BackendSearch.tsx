@@ -12,7 +12,7 @@ import type { STRMatch, STRProfile } from '@/utils/constants';
 import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
-import HaplogroupSelector from './HaplogroupSelector';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface BackendSearchProps {
   onMatchesFound?: (matches: STRMatch[]) => void;
@@ -32,6 +32,8 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [customMarkers, setCustomMarkers] = useState<Record<string, string>>({});
   const [searchMode, setSearchMode] = useState<'kit' | 'markers'>('kit');
   const [selectedHaplogroup, setSelectedHaplogroup] = useState('');
+  const [includeSubclades, setIncludeSubclades] = useState(true);
+  const [tempHaplogroupFilter, setTempHaplogroupFilter] = useState('');
 
   // Load database stats on mount
   useEffect(() => {
@@ -385,12 +387,68 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               </div>
             </div>
 
-            {/* Haplogroup Selector */}
-            <HaplogroupSelector
-              selectedHaplogroup={selectedHaplogroup}
-              onHaplogroupChange={setSelectedHaplogroup}
-              minProfiles={500}
-            />
+            {/* Haplogroup Filter */}
+            <div className="space-y-3 p-4 bg-white rounded-lg border border-gray-200">
+              <label className="block text-xs font-semibold text-gray-700">Haplogroup Filter</label>
+              <div className="flex items-center gap-2">
+                <div className="flex-grow relative">
+                  {tempHaplogroupFilter && (
+                    <button
+                      onClick={() => {
+                        setTempHaplogroupFilter('');
+                        setSelectedHaplogroup('');
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10"
+                      title="Reset filter"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+                  <input
+                    type="text"
+                    value={tempHaplogroupFilter}
+                    onChange={(e) => setTempHaplogroupFilter(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        setSelectedHaplogroup(tempHaplogroupFilter);
+                      }
+                    }}
+                    placeholder="Enter haplogroup (e.g., R-M269, J-M172)"
+                    className={`w-full px-3 py-2 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all duration-300 text-sm ${tempHaplogroupFilter ? 'pl-8' : ''}`}
+                  />
+                </div>
+                <button
+                  onClick={() => setSelectedHaplogroup(tempHaplogroupFilter)}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-300 text-sm"
+                >
+                  Apply Filter
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="include-subclades"
+                  checked={includeSubclades}
+                  onCheckedChange={(checked) => {
+                    if (typeof checked === 'boolean') {
+                      setIncludeSubclades(checked);
+                    }
+                  }}
+                />
+                <label htmlFor="include-subclades" className="text-sm text-gray-700">
+                  Include subclades (e.g., R-M269 includes R-L21, R-U106, etc.)
+                </label>
+              </div>
+
+              {selectedHaplogroup && (
+                <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                  🎯 Active filter: <strong>{selectedHaplogroup}</strong> {includeSubclades && '(with subclades)'}
+                </div>
+              )}
+            </div>
 
             {searchMode === 'kit' ? (
               <div className="space-y-3">
