@@ -333,7 +333,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         {/* Very Compact Header */}
         <div className="text-center mb-2">
           <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1">
-            рџ§¬ YSTR Genetic Matcher
+            🧬 YSTR Genetic Matcher
           </h1>
           <p className="text-xs text-gray-600">
             Search through {dbStats ? parseInt(dbStats.totalProfiles).toLocaleString() : 'Loading...'} YSTR profiles
@@ -387,15 +387,15 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 }`}
                 onClick={() => setSearchMode('markers')}
               >
-                рџ§¬ Search by Markers
+                🧬 Search by Markers
               </button>
             </div>
           </div>
 
           <div className="p-4 space-y-4">
             {/* Compact Search Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
+            <div className="flex flex-wrap gap-4">
+              <div className="space-y-1" style={{width: '200px'}}>
                 <label className="block text-xs font-semibold text-gray-700">Панель маркеров</label>
                 <select
                   value={markerCount}
@@ -409,7 +409,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   <option value="111">Y-STR111</option>
                 </select>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1" style={{width: '200px'}}>
                 <label className="block text-xs font-semibold text-gray-700">Max Genetic Distance</label>
                 <div className="relative">
                   <input
@@ -426,7 +426,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   </div>
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1" style={{width: '200px'}}>
                 <label className="block text-xs font-semibold text-gray-700">Max Results</label>
                 <div className="relative">
                   <input
@@ -533,7 +533,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
 
             {searchMode === 'kit' ? (
               <div className="space-y-3">
-                <div className="space-y-1">
+                <div className="space-y-1" style={{maxWidth: '400px'}}>
                   <label className="block text-xs font-semibold text-gray-700">Kit Number</label>
                   <input
                     type="text"
@@ -546,6 +546,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   onClick={handleSearchByKit}
                   disabled={loading || filtering || !kitNumber.trim()}
+                  style={{maxWidth: '400px'}}
                   className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
                   {loading || filtering ? (
@@ -555,7 +556,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
-                      <span>рџ"Ќ</span>
+                      <span>🔍</span>
                       <span className="text-sm">Search for Matches</span>
                     </div>
                   )}
@@ -576,6 +577,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <button
                   onClick={handleSearchByMarkers}
                   disabled={loading || filtering}
+                  style={{maxWidth: '400px'}}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
                 >
                   {loading || filtering ? (
@@ -585,7 +587,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-2">
-                      <span>рџ§¬</span>
+                      <span>🧬</span>
                       <span className="text-sm">Search by Markers</span>
                     </div>
                   )}
