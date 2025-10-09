@@ -236,15 +236,6 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     }
   }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
 
-  const handleHaplogroupClick = useCallback((haplogroup: string) => {
-    // Set the selected haplogroup and temp filter
-    setSelectedHaplogroup(haplogroup);
-    setTempHaplogroupFilter(haplogroup);
-
-    // Apply filter immediately with the clicked haplogroup
-    handleApplyFilter(haplogroup);
-  }, [handleApplyFilter]);
-
   // Apply haplogroup filter
   const handleApplyFilter = useCallback(async (haplogroupToFilter?: string) => {
     const haplogroup = haplogroupToFilter || selectedHaplogroup;
@@ -313,6 +304,16 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     setIsFilterActive(false);
     setFilteredMatches(matches);
   }, [matches]);
+
+  // Handle haplogroup click for quick filtering
+  const handleHaplogroupClick = useCallback((haplogroup: string) => {
+    // Set the selected haplogroup and temp filter
+    setSelectedHaplogroup(haplogroup);
+    setTempHaplogroupFilter(haplogroup);
+
+    // Apply filter immediately with the clicked haplogroup
+    handleApplyFilter(haplogroup);
+  }, [handleApplyFilter]);
 
   // Determine which matches to display
   const displayedMatches = isFilterActive ? filteredMatches : matches;
