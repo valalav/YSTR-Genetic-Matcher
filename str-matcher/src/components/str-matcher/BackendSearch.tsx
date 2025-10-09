@@ -237,22 +237,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
 
   const handleHaplogroupClick = useCallback((haplogroup: string) => {
-    // Set the selected haplogroup in the selector
+    // Set the selected haplogroup and temp filter
     setSelectedHaplogroup(haplogroup);
+    setTempHaplogroupFilter(haplogroup);
 
-    // If we have a current profile, re-run the search with the new haplogroup filter
-    if (profile && profile.kitNumber !== 'Custom Search') {
-      // Trigger search by kit number with the new haplogroup
-      setTimeout(() => {
-        handleSearchByKit();
-      }, 100);
-    } else if (profile && Object.keys(customMarkers).length > 0) {
-      // Trigger search by markers with the new haplogroup
-      setTimeout(() => {
-        handleSearchByMarkers();
-      }, 100);
-    }
-  }, [profile, customMarkers, handleSearchByKit, handleSearchByMarkers]);
+    // Apply filter immediately with the clicked haplogroup
+    handleApplyFilter(haplogroup);
+  }, [handleApplyFilter]);
 
   // Apply haplogroup filter
   const handleApplyFilter = useCallback(async (haplogroupToFilter?: string) => {
