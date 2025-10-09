@@ -11,6 +11,7 @@ import type { STRMatch, STRProfile } from '@/utils/constants';
 import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
+import HaplogroupInfoPopup from './HaplogroupInfoPopup';
 import { Checkbox } from '@/components/ui/checkbox';
 import { processMatches } from '@/utils/calculations';
 import type { Match, Filters } from '@/types';
@@ -38,6 +39,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [tempHaplogroupFilter, setTempHaplogroupFilter] = useState('');
   const [isFilterActive, setIsFilterActive] = useState(false);
   const [filtering, setFiltering] = useState(false);
+  const [selectedHaplogroupInfo, setSelectedHaplogroupInfo] = useState<string | null>(null);
 
   // Load database stats on mount
   useEffect(() => {
@@ -631,8 +633,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               onKitNumberClick={handleKitNumberClick}
               onRemoveMarker={handleRemoveMarker}
               onHaplogroupClick={handleHaplogroupClick}
+              onHaplogroupInfo={setSelectedHaplogroupInfo}
             />
         </div>
+      )}
+
+      {/* Haplogroup Info Popup */}
+      {selectedHaplogroupInfo && (
+        <HaplogroupInfoPopup
+          haplogroup={selectedHaplogroupInfo}
+          onClose={() => setSelectedHaplogroupInfo(null)}
+        />
       )}
   </>);
 };

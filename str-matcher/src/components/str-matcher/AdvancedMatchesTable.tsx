@@ -13,6 +13,7 @@ interface AdvancedMatchesTableProps {
   onKitNumberClick?: (kitNumber: string) => void;
   onRemoveMarker?: (marker: string) => void;
   onHaplogroupClick?: (haplogroup: string) => void;
+  onHaplogroupInfo?: (haplogroup: string) => void;
 }
 
 // Common STR markers in order of importance
@@ -29,7 +30,7 @@ interface MarkerRarity {
   level: 'common' | 'uncommon' | 'rare' | 'very-rare' | 'extremely-rare';
 }
 
-const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick }) => {
+const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [hiddenKitNumbers, setHiddenKitNumbers] = useState<Set<string>>(() => {
@@ -383,18 +384,27 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
 
                   {/* Haplogroup */}
                   <td className="border-r border-gray-300 px-2 py-2 text-center w-[150px] max-w-[150px]">
-                    {onHaplogroupClick && match.profile?.haplogroup ? (
-                      <button
-                        onClick={() => match.profile?.haplogroup && onHaplogroupClick(match.profile.haplogroup)}
-                        className="text-sm font-mono text-purple-600 hover:text-purple-800 hover:underline cursor-pointer transition-colors"
-                        title={`Filter by haplogroup: ${match.profile.haplogroup}`}
-                      >
-                        {match.profile.haplogroup}
-                      </button>
+                    {match.profile?.haplogroup ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => match.profile?.haplogroup && onHaplogroupInfo?.(match.profile.haplogroup)}
+                          className="text-sm font-mono text-purple-600 hover:text-purple-800 hover:underline cursor-pointer transition-colors"
+                          title={`View haplogroup info: ${match.profile.haplogroup}`}
+                        >
+                          {match.profile.haplogroup}
+                        </button>
+                        {onHaplogroupClick && (
+                          <button
+                            onClick={() => match.profile?.haplogroup && onHaplogroupClick(match.profile.haplogroup)}
+                            className="text-xs px-1 py-0.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                            title={`Filter by haplogroup: ${match.profile.haplogroup}`}
+                          >
+                            1
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-sm font-mono text-purple-600">
-                        {match.profile?.haplogroup || ''}
-                      </span>
+                      <span className="text-sm font-mono text-purple-600"></span>
                     )}
                   </td>
 

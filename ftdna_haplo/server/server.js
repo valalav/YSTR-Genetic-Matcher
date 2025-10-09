@@ -264,8 +264,8 @@ apiRouter.post(`/batch-check-subclades`, async (req, res) => {
 
         const results = {};
         
-        // 🚨 ПРИНУДИТЕЛЬНО используем fallback из-за проблем с haplogroupService
-        if (!haplogroupService || true) { // Временно всегда используем fallback
+        // Use haplogroupService if available, otherwise fallback
+        if (!haplogroupService) { // Use fallback only if service not available
             console.log('⚠️ Using fallback logic for batch (haplogroupService disabled due to issues)');
             
             // Fallback логика для batch
