@@ -12,6 +12,7 @@ import { markerGroups } from '@/utils/constants';
 import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
 import HaplogroupInfoPopup from './HaplogroupInfoPopup';
+import ProfileEditModal from './ProfileEditModal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { processMatches } from '@/utils/calculations';
 import type { Match, Filters } from '@/types';
@@ -40,6 +41,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [isFilterActive, setIsFilterActive] = useState(false);
   const [filtering, setFiltering] = useState(false);
   const [selectedHaplogroupInfo, setSelectedHaplogroupInfo] = useState<string | null>(null);
+  const [editingKitNumber, setEditingKitNumber] = useState<string | null>(null);
 
   // Load database stats on mount
   useEffect(() => {
@@ -626,6 +628,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               onRemoveMarker={handleRemoveMarker}
               onHaplogroupClick={handleHaplogroupClick}
               onHaplogroupInfo={setSelectedHaplogroupInfo}
+              onEditProfile={setEditingKitNumber}
             />
         </div>
       )}
@@ -635,6 +638,14 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         <HaplogroupInfoPopup
           haplogroup={selectedHaplogroupInfo}
           onClose={() => setSelectedHaplogroupInfo(null)}
+        />
+      )}
+
+      {/* Profile Edit Modal */}
+      {editingKitNumber && (
+        <ProfileEditModal
+          kitNumber={editingKitNumber}
+          onClose={() => setEditingKitNumber(null)}
         />
       )}
   </>);

@@ -14,6 +14,7 @@ interface AdvancedMatchesTableProps {
   onRemoveMarker?: (marker: string) => void;
   onHaplogroupClick?: (haplogroup: string) => void;
   onHaplogroupInfo?: (haplogroup: string) => void;
+  onEditProfile?: (kitNumber: string) => void;
 }
 
 // Common STR markers in order of importance
@@ -30,7 +31,7 @@ interface MarkerRarity {
   level: 'common' | 'uncommon' | 'rare' | 'very-rare' | 'extremely-rare';
 }
 
-const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo }) => {
+const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [hiddenKitNumbers, setHiddenKitNumbers] = useState<Set<string>>(() => {
@@ -342,19 +343,32 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                 >
                   {/* Kit Number */}
                   <td className="sticky left-0 bg-inherit border-r border-gray-300 px-2 py-2 text-center z-10 w-[100px] max-w-[100px]">
-                    {onKitNumberClick ? (
-                      <button
-                        onClick={() => match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
-                        className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                        title="Click to search matches for this profile"
-                      >
-                        {match.profile?.kitNumber || 'N/A'}
-                      </button>
-                    ) : (
-                      <span className="font-bold text-blue-600">
-                        {match.profile?.kitNumber || 'N/A'}
-                      </span>
-                    )}
+                    <div className="flex items-center justify-center gap-1">
+                      {onKitNumberClick ? (
+                        <button
+                          onClick={() => match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
+                          className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                          title="Click to search matches for this profile"
+                        >
+                          {match.profile?.kitNumber || 'N/A'}
+                        </button>
+                      ) : (
+                        <span className="font-bold text-blue-600">
+                          {match.profile?.kitNumber || 'N/A'}
+                        </span>
+                      )}
+                      {onEditProfile && (
+                        <button
+                          onClick={() => match.profile?.kitNumber && onEditProfile(match.profile.kitNumber)}
+                          className="text-gray-500 hover:text-blue-600 transition-colors"
+                          title="Edit profile"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </td>
 
                   {/* Hide Button */}

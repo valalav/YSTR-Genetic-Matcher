@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ interface Sample {
 interface SampleManagerProps {
   apiKey: string;
   backendUrl?: string;
+  initialKitNumber?: string;
 }
 
 const COMMON_STR_MARKERS = [
@@ -37,8 +38,8 @@ const COMMON_STR_MARKERS = [
   'DYS643', 'DYS497', 'DYS510', 'DYS434', 'DYS461', 'DYS435'
 ];
 
-const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'http://localhost:9004' }) => {
-  const [mode, setMode] = useState<'add' | 'edit' | 'bulk'>('add');
+const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'http://localhost:9004', initialKitNumber }) => {
+  const [mode, setMode] = useState<'add' | 'edit' | 'bulk'>(initialKitNumber ? 'edit' : 'add');
   const [sample, setSample] = useState<Sample>({
     kitNumber: '',
     name: '',
@@ -79,6 +80,13 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'htt
       setLoading(false);
     }
   }, [backendUrl]);
+
+  // Auto-load sample if initialKitNumber is provided
+  useEffect(() => {
+    if (initialKitNumber) {
+      fetchSample(initialKitNumber);
+    }
+  }, [initialKitNumber, fetchSample]);
 
   // Save sample (create or update)
   const saveSample = useCallback(async () => {
