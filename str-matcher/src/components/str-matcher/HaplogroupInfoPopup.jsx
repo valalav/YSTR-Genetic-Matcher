@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import apiClient from '@/utils/axios';
+import { apiClient } from '@/utils/axios';
 
 const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
     const [result, setResult] = useState(null);
