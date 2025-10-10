@@ -1,6 +1,0 @@
-Starting database reload from new CSV files...
-   DB.csv: c:\_Data\DNA\Projects\DB\NewDB\DB.csv
-   aadna.csv: c:\_Data\DNA\Projects\DB\NewDB\aadna.csv
-
-Failed to connect to database: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
-
