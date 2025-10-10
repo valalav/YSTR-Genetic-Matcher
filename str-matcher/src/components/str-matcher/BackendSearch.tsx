@@ -13,9 +13,14 @@ import AdvancedMatchesTable from './AdvancedMatchesTable';
 import STRMarkerGrid from './STRMarkerGrid';
 import HaplogroupInfoPopup from './HaplogroupInfoPopup';
 import ProfileEditModal from './ProfileEditModal';
+import ImportProfilesModal from './ImportProfilesModal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { processMatches } from '@/utils/calculations';
 import type { Match, Filters } from '@/types';
+import { useSelector, useDispatch } from 'react-redux';
+import { importProfiles, clearImportedProfiles } from '@/store/importedProfilesSlice';
+import type { RootState } from '@/store/store';
+import { Upload, Trash2 } from 'lucide-react';
 
 interface BackendSearchProps {
   onMatchesFound?: (matches: STRMatch[]) => void;
@@ -23,6 +28,9 @@ interface BackendSearchProps {
 
 const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const { findMatches, getProfile, getDatabaseStats, loading, error } = useBackendAPI();
+  const dispatch = useDispatch();
+  const importedProfiles = useSelector((state: RootState) => state.importedProfiles.profiles);
+  const importStats = useSelector((state: RootState) => state.importedProfiles.stats);
 
   const [kitNumber, setKitNumber] = useState('');
   const [profile, setProfile] = useState<STRProfile | null>(null);
@@ -42,6 +50,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [filtering, setFiltering] = useState(false);
   const [selectedHaplogroupInfo, setSelectedHaplogroupInfo] = useState<string | null>(null);
   const [editingKitNumber, setEditingKitNumber] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Load database stats on mount
   useEffect(() => {
@@ -56,17 +65,109 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     loadStats();
   }, [getDatabaseStats]);
 
+  // Handle import of profiles
+  const handleImport = useCallback((profiles: STRProfile[], stats: any) => {
+    // Calculate actual stats
+    const existingKitNumbers = new Set(
+      matches.map(m => m.profile.kitNumber)
+    );
+
+    const newProfiles = profiles.filter(p => !existingKitNumbers.has(p.kitNumber));
+    const overriddenProfiles = profiles.filter(p => existingKitNumbers.has(p.kitNumber));
+
+    const updatedStats = {
+      totalImported: profiles.length,
+      newProfiles: newProfiles.length,
+      overriddenProfiles: overriddenProfiles.length,
+      skippedProfiles: 0,
+    };
+
+    dispatch(importProfiles({ profiles, stats: updatedStats }));
+
+    // Show success message
+    alert(
+      `Импорт завершен:\n` +
+      `• Всего импортировано: ${updatedStats.totalImported}\n` +
+      `• Новых профилей: ${updatedStats.newProfiles}\n` +
+      `• Переопределено: ${updatedStats.overriddenProfiles}`
+    );
+  }, [matches, dispatch]);
+
+  // Merge imported profiles with search results
+  // Imported profiles take priority over database profiles
+  const mergeProfiles = useCallback((dbMatches: STRMatch[], queryProfile: STRProfile | null): STRMatch[] => {
+    if (importedProfiles.length === 0) {
+      return dbMatches;
+    }
+
+    // Create a map of imported profiles by kit number
+    const importedMap = new Map(
+      importedProfiles.map(p => [p.kitNumber, p])
+    );
+
+    // Override database profiles with imported ones
+    const merged = dbMatches.map(match => {
+      const imported = importedMap.get(match.profile.kitNumber);
+      if (imported) {
+        // Profile exists in imports - use imported version
+        return {
+          ...match,
+          profile: imported,
+        };
+      }
+      return match;
+    });
+
+    // Add new imported profiles that don't exist in database results
+    const existingKitNumbers = new Set(dbMatches.map(m => m.profile.kitNumber));
+    const newImportedProfiles = importedProfiles.filter(
+      p => !existingKitNumbers.has(p.kitNumber)
+    );
+
+    // Create STRMatch objects for new imported profiles
+    // Note: We need to calculate distance if there's a query profile
+    if (queryProfile && newImportedProfiles.length > 0) {
+      const newMatches: STRMatch[] = newImportedProfiles.map(imported => {
+        // Simple distance calculation
+        const commonMarkers = Object.keys(queryProfile.markers).filter(
+          marker => imported.markers[marker]
+        );
+        const distance = commonMarkers.reduce((acc, marker) => {
+          return acc + (queryProfile.markers[marker] !== imported.markers[marker] ? 1 : 0);
+        }, 0);
+
+        return {
+          profile: imported,
+          distance,
+          comparedMarkers: commonMarkers.length,
+          identicalMarkers: commonMarkers.length - distance,
+          percentIdentical: ((commonMarkers.length - distance) / commonMarkers.length) * 100,
+        };
+      });
+
+      merged.push(...newMatches);
+    }
+
+    // Sort by distance
+    return merged.sort((a, b) => a.distance - b.distance);
+  }, [importedProfiles]);
+
   const handleSearchByKit = useCallback(async () => {
     if (!kitNumber.trim()) {
       return;
     }
 
     try {
-      // First get the profile
-      const foundProfile = await getProfile(kitNumber.trim());
+      // First check if profile exists in imported profiles
+      let foundProfile = importedProfiles.find(p => p.kitNumber === kitNumber.trim());
+
+      // If not found in imports, get from database
       if (!foundProfile) {
-        alert(`Profile with kit number ${kitNumber} not found`);
-        return;
+        foundProfile = await getProfile(kitNumber.trim());
+        if (!foundProfile) {
+          alert(`Profile with kit number ${kitNumber} not found`);
+          return;
+        }
       }
 
       // Filter markers based on selected panel
@@ -100,14 +201,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
 
-      setMatches(cleanedMatches);
-      setFilteredMatches(cleanedMatches);
-      onMatchesFound?.(cleanedMatches);
+      // Merge with imported profiles
+      const mergedMatches = mergeProfiles(cleanedMatches, foundProfile);
+
+      setMatches(mergedMatches);
+      setFilteredMatches(mergedMatches);
+      onMatchesFound?.(mergedMatches);
 
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
+  }, [kitNumber, maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound, mergeProfiles, importedProfiles]);
 
   const handleSearchByMarkers = useCallback(async () => {
     const markersToSearch = Object.fromEntries(
@@ -129,6 +233,16 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         )
       );
 
+      // Create a temporary profile BEFORE searching (needed for mergeProfiles)
+      const tempProfile: STRProfile = {
+        kitNumber: 'Custom Search',
+        name: 'Custom Marker Search',
+        country: '',
+        haplogroup: '',
+        markers: filteredMarkers,
+      };
+      setProfile(tempProfile);
+
       const searchMatches = await findMatches({
         markers: filteredMarkers,
         maxDistance,
@@ -137,11 +251,14 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      setMatches(searchMatches);
-      setFilteredMatches(searchMatches);
-      onMatchesFound?.(searchMatches);
+      // Merge with imported profiles (pass tempProfile explicitly)
+      const mergedMatches = mergeProfiles(searchMatches, tempProfile);
 
-      // Create a temporary profile for display (with filtered markers)
+      setMatches(mergedMatches);
+      setFilteredMatches(mergedMatches);
+      onMatchesFound?.(mergedMatches);
+
+      // Update profile display (already set above)
       setProfile({
         kitNumber: 'Custom Search',
         name: 'Custom Marker Search',
@@ -153,7 +270,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
+  }, [customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound, mergeProfiles]);
 
   const handleMarkerChange = useCallback((marker: string, value: string) => {
     setCustomMarkers(prev => ({
@@ -167,11 +284,16 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     setKitNumber(clickedKitNumber);
 
     try {
-      const foundProfile = await getProfile(clickedKitNumber);
+      // First check if profile exists in imported profiles
+      let foundProfile = importedProfiles.find(p => p.kitNumber === clickedKitNumber);
 
+      // If not found in imports, get from database
       if (!foundProfile) {
-        alert(`Profile with kit number ${clickedKitNumber} not found`);
-        return;
+        foundProfile = await getProfile(clickedKitNumber);
+        if (!foundProfile) {
+          alert(`Profile with kit number ${clickedKitNumber} not found`);
+          return;
+        }
       }
 
       setProfile(foundProfile);
@@ -191,14 +313,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
 
-      setMatches(cleanedMatches);
-      setFilteredMatches(cleanedMatches);
-      onMatchesFound?.(cleanedMatches);
+      // Merge with imported profiles
+      const mergedMatches = mergeProfiles(cleanedMatches, foundProfile);
+
+      setMatches(mergedMatches);
+      setFilteredMatches(mergedMatches);
+      onMatchesFound?.(mergedMatches);
 
     } catch (error) {
       console.error('Search failed:', error);
     }
-  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound]);
+  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound, mergeProfiles, importedProfiles]);
 
   const handleRemoveMarker = useCallback(async (markerToRemove: string) => {
     if (!profile) return;
@@ -229,14 +354,17 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         match.profile?.kitNumber !== updatedProfile.kitNumber
       );
 
-      setMatches(cleanedMatches);
-      setFilteredMatches(cleanedMatches);
-      onMatchesFound?.(cleanedMatches);
+      // Merge with imported profiles
+      const mergedMatches = mergeProfiles(cleanedMatches, updatedProfile);
+
+      setMatches(mergedMatches);
+      setFilteredMatches(mergedMatches);
+      onMatchesFound?.(mergedMatches);
 
     } catch (error) {
       console.error('Search after marker removal failed:', error);
     }
-  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound]);
+  }, [profile, customMarkers, maxDistance, maxResults, markerCount, selectedHaplogroup, findMatches, onMatchesFound, mergeProfiles]);
 
   // Apply haplogroup filter
   const handleApplyFilter = useCallback(async (haplogroupToFilter?: string) => {
@@ -389,7 +517,54 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               >
                 🧬 Search by Markers
               </button>
+
+              {/* Import Button */}
+              <button
+                className="px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg flex items-center gap-2"
+                onClick={() => setShowImportModal(true)}
+              >
+                <Upload className="h-4 w-4" />
+                Импорт профилей
+              </button>
+
+              {/* Clear Import Button (shown when profiles are imported) */}
+              {importedProfiles.length > 0 && (
+                <button
+                  className="px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md hover:shadow-lg flex items-center gap-2"
+                  onClick={() => {
+                    if (confirm(`Удалить ${importedProfiles.length} импортированных профилей?`)) {
+                      dispatch(clearImportedProfiles());
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Очистить импорт ({importedProfiles.length})
+                </button>
+              )}
             </div>
+
+            {/* Import Stats Banner */}
+            {importStats && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-500 text-white rounded-full p-2">
+                    <Upload className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-green-900">Импортировано профилей</div>
+                    <div className="text-sm text-green-700">
+                      Всего: {importStats.totalImported} • Новых: {importStats.newProfiles} • Переопределено: {importStats.overriddenProfiles}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => dispatch(clearImportedProfiles())}
+                  className="text-green-700 hover:text-green-900 text-sm underline"
+                >
+                  Очистить
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="p-4 space-y-4">
@@ -650,6 +825,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
           onClose={() => setEditingKitNumber(null)}
         />
       )}
+
+      {/* Import Profiles Modal */}
+      <ImportProfilesModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImport}
+      />
   </>);
 };
 

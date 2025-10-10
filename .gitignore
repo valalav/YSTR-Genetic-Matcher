@@ -245,3 +245,6 @@ pnpm-lock.yaml
 # ftdna_haplo/data/get.json is now tracked by Git LFS
 nul
 */nul
+scripts/upload_data.sql
+*.tar.gz
+load_log.txt

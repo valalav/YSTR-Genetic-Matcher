@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Получаем URL API из переменных окружения или используем значение по умолчанию
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://127.0.0.1:9003/api'
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://127.0.0.1:9005/api'
 
 export async function GET(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/', '')
