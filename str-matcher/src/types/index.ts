@@ -37,6 +37,7 @@ export interface Filters {
     maxDistance?: number;
     minMarkers?: number;
     includeSubclades?: boolean;
+    showEmptyHaplogroups?: boolean;
 }
 
 export interface HaplogroupDetails {

@@ -1,4 +1,5 @@
 import axios from 'axios';
 
-// Не устанавливаем baseURL глобально, так как он может отличаться для разных запросов
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9004/api';
+// Use relative URL for production (proxied by nginx)
+// In production, nginx proxies /api/ to backend
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';

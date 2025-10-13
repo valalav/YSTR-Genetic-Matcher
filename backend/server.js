@@ -21,7 +21,9 @@ app.use(compression());
 
 // CORS configuration - allow multiple ports for development
 const allowedOrigins = [
+  'https://pystr.valalav.ru',
   'http://localhost:3000',
+  'http://192.168.10.170:3000',
   'http://localhost:3001',
   'http://localhost:3002',
   process.env.CORS_ORIGIN,

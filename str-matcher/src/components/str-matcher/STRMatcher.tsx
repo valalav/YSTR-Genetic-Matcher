@@ -327,6 +327,7 @@ const STRMatcher: React.FC = () => {
         }));
 
         const filters: Filters = {
+          showEmptyHaplogroups,
           haplogroups: [filterHaplogroup],
           includeSubclades: true
         };

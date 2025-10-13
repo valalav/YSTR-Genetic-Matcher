@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, X, FileText, Table, Copy } from 'lucide-react';
 import type { STRProfile } from '@/utils/constants';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ImportProfilesModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ const ImportProfilesModal: React.FC<ImportProfilesModalProps> = ({ isOpen, onClo
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<STRProfile[]>([]);
 
+  const { t } = useTranslation();
   // Parse CSV content
   const parseCSV = useCallback((content: string): STRProfile[] => {
     const lines = content.trim().split('\n');

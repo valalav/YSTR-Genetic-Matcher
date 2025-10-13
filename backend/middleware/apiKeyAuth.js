@@ -49,6 +49,17 @@ function requireApiKey(requiredPermission = null) {
         });
       }
 
+      // Check if this is the master API key - grant all permissions
+      const masterKey = process.env.MASTER_API_KEY;
+      if (masterKey && apiKey === masterKey) {
+        req.apiKey = {
+          id: null,
+          name: 'MASTER',
+          permissions: { '*': true }
+        };
+        return next();
+      }
+
       const keyHash = hashApiKey(apiKey);
 
       // Check if API key is valid

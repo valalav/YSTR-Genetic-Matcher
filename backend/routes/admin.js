@@ -2,6 +2,7 @@ const express = require('express');
 const { executeQuery, withTransaction } = require('../config/database');
 const matchingService = require('../services/matchingService');
 const { asyncHandler } = require('../middleware/validation');
+const { requireApiKey } = require('../middleware/apiKeyAuth');
 const Queue = require('bull');
 
 const router = express.Router();
@@ -401,6 +402,58 @@ router.delete('/clear-cache',
       console.error('❌ Cache clearing error:', error);
       res.status(500).json({
         error: `Cache clearing failed: ${error.message}`
+      });
+    }
+  })
+);
+
+// POST /api/admin/reload-cache - Reload cache (for Sample Manager)
+// Requires API key with cache management permission
+router.post('/reload-cache',
+  requireApiKey('cache.clear'),
+  asyncHandler(async (req, res) => {
+    const { type = 'all' } = req.body;
+
+    let clearedCount = 0;
+    const clearedTypes = [];
+
+    try {
+      if (type === 'all' || type === 'matching') {
+        await matchingService.clearMatchingCaches();
+        clearedCount++;
+        clearedTypes.push('matching');
+      }
+
+      if (type === 'all' || type === 'haplogroup') {
+        const haplogroupService = require('../services/haplogroupService');
+        await haplogroupService.redis.del('haplogroup:tree');
+        clearedCount++;
+        clearedTypes.push('haplogroup');
+      }
+
+      // Also clear any profile-related caches
+      if (type === 'all' || type === 'profiles') {
+        const haplogroupService = require('../services/haplogroupService');
+        const keys = await haplogroupService.redis.keys('profile:*');
+        if (keys.length > 0) {
+          await haplogroupService.redis.del(...keys);
+        }
+        clearedCount++;
+        clearedTypes.push('profiles');
+      }
+
+      res.json({
+        success: true,
+        message: `Cache reloaded successfully. Cleared ${clearedCount} cache type(s).`,
+        clearedTypes,
+        timestamp: new Date().toISOString(),
+        apiKey: req.apiKey?.name || 'Unknown'
+      });
+
+    } catch (error) {
+      console.error('❌ Cache reload error:', error);
+      res.status(500).json({
+        error: `Cache reload failed: ${error.message}`
       });
     }
   })

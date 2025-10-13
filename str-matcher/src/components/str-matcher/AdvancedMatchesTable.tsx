@@ -6,6 +6,7 @@ import { calculateMarkerDifference } from '@/utils/calculations';
 import { palindromes } from '@/utils/constants';
 import { getMarkersSortedByMutationRate } from '@/utils/mutation-rates';
 import { Download, Copy, Check } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface AdvancedMatchesTableProps {
   matches: STRMatch[];
@@ -47,6 +48,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [copiedKitNumber, setCopiedKitNumber] = useState<string | null>(null);
+  const { t } = useTranslation();
   const [hiddenKitNumbers, setHiddenKitNumbers] = useState<Set<string>>(() => {
     // Load hidden kit numbers from localStorage
     if (typeof window !== 'undefined') {
@@ -286,22 +288,22 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold text-gray-800">
-            🎯 Генетические совпадения ({filteredMatches.length} {filteredMatches.length !== visibleMatches.length && `из ${visibleMatches.length}`} найдено)
+            {t("geneticMatches.title", { count: filteredMatches.length, outOf: filteredMatches.length !== visibleMatches.length ? `of ${visibleMatches.length} ` : "" })}
           </h2>
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            title="Экспортировать совпадения в CSV"
+            title={t("geneticMatches.exportCSVTitle")}
           >
             <Download className="h-4 w-4" />
-            <span className="text-sm font-medium">Экспорт CSV</span>
+            <span className="text-sm font-medium">{t("geneticMatches.exportCSV")}</span>
           </button>
         </div>
         <p className="text-sm text-gray-600">
           {filteredMatches.length !== visibleMatches.length ? (
-            <>Отфильтровано {filteredMatches.length} из {visibleMatches.length} совпадений</>
+            <>{t("geneticMatches.filtered", { count: filteredMatches.length, total: visibleMatches.length })}</>
           ) : (
-            <>Найдено {visibleMatches.length} генетических совпадений</>
+            <>{t("geneticMatches.found", { count: visibleMatches.length })}</>
           )}
           {hiddenKitNumbers.size > 0 && (
             <span className="ml-2 text-orange-600">

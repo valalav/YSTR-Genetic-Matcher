@@ -38,7 +38,7 @@ const COMMON_STR_MARKERS = [
   'DYS643', 'DYS497', 'DYS510', 'DYS434', 'DYS461', 'DYS435'
 ];
 
-const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'http://localhost:9004', initialKitNumber }) => {
+const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = '', initialKitNumber }) => {
   const [mode, setMode] = useState<'add' | 'edit' | 'bulk'>(initialKitNumber ? 'edit' : 'add');
   const [sample, setSample] = useState<Sample>({
     kitNumber: '',
@@ -48,6 +48,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'htt
     markers: {}
   });
   const [loading, setLoading] = useState(false);
+  const [reloadingCache, setReloadingCache] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [clipboardText, setClipboardText] = useState('');
   const [parsedSamples, setParsedSamples] = useState<Sample[]>([]);
@@ -261,29 +262,79 @@ const SampleManager: React.FC<SampleManagerProps> = ({ apiKey, backendUrl = 'htt
     reader.readAsText(file);
   }, []);
 
+  // Reload cache - clear backend cache and optionally reload page
+  const reloadCache = useCallback(async () => {
+    setReloadingCache(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/reload-cache`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({ type: 'all' })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || 'Failed to reload cache');
+      }
+
+      const data = await response.json();
+      setMessage({
+        type: 'success',
+        text: `✅ ${data.message} Cache types cleared: ${data.clearedTypes.join(', ')}`
+      });
+
+      // Optionally reload the page after a short delay to refresh all data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: `Failed to reload cache: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setReloadingCache(false);
+    }
+  }, [apiKey, backendUrl]);
+
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Sample Manager</CardTitle>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={mode === 'add' ? 'default' : 'outline'}
+                onClick={() => setMode('add')}
+              >
+                Add Sample
+              </Button>
+              <Button
+                variant={mode === 'edit' ? 'default' : 'outline'}
+                onClick={() => setMode('edit')}
+              >
+                Edit Sample
+              </Button>
+              <Button
+                variant={mode === 'bulk' ? 'default' : 'outline'}
+                onClick={() => setMode('bulk')}
+              >
+                Bulk Import
+              </Button>
+            </div>
             <Button
-              variant={mode === 'add' ? 'default' : 'outline'}
-              onClick={() => setMode('add')}
+              onClick={reloadCache}
+              disabled={reloadingCache}
+              variant="outline"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              Add Sample
-            </Button>
-            <Button
-              variant={mode === 'edit' ? 'default' : 'outline'}
-              onClick={() => setMode('edit')}
-            >
-              Edit Sample
-            </Button>
-            <Button
-              variant={mode === 'bulk' ? 'default' : 'outline'}
-              onClick={() => setMode('bulk')}
-            >
-              Bulk Import
+              {reloadingCache ? '🔄 Reloading...' : '🔄 Apply Changes'}
             </Button>
           </div>
         </CardHeader>

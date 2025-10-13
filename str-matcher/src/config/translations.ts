@@ -307,6 +307,9 @@ export const translations = {
       addSource: 'Add Source',
       searchSources: 'Search sources...',
       processing: 'Processing profiles...',
+      exportCSV: 'Export CSV',
+      exportCSVTitle: 'Export matches to CSV',
+      filtered: 'Filtered {count} of {total} matches',
       saveToLocal: 'Save to Local Database',
       loadMore: 'Load more',
       noMoreData: 'No more data to load',
@@ -373,9 +376,18 @@ export const translations = {
       title: 'Haplogroup: {haplogroup}',
       loading: 'Loading...',
       ftdnaPath: 'FTDNA Path',
-      viewFtdna: 'View in FTDNA',
+      viewFtdna: 'Open in FTDNA',
       yfullPath: 'YFull Path',
-      viewYfull: 'View in YFull'
+      viewYfull: 'Open in YFull'
+    },
+    import: {
+      title: 'Import Profiles',
+      markersPanel: 'Markers Panel'
+    },
+    geneticMatches: {
+      title: '🎯 Genetic Matches ({count} {outOf}found)',
+      found: 'Found {count} genetic matches',
+      outOf: 'of {total} '
     }
   },
   ru: {
@@ -683,6 +695,9 @@ export const translations = {
       totalProfiles: 'Всего профилей',
       totalMatches: 'Всего совпадений',
       uploadFile: 'Загрузить файл',
+      exportCSV: 'Экспорт CSV',
+      exportCSVTitle: 'Экспортировать совпадения в CSV',
+      filtered: 'Отфильтровано {count} из {total} совпадений',
       addSource: 'Добавить источник',
       searchSources: 'Поиск источников...',
       processing: 'Обработка профилей...',
@@ -755,6 +770,15 @@ export const translations = {
       viewFtdna: 'Открыть в FTDNA',
       yfullPath: 'Путь YFull',
       viewYfull: 'Открыть в YFull'
+    },
+    import: {
+      title: 'Импорт профилей',
+      markersPanel: 'Панель маркеров'
+    },
+    geneticMatches: {
+      title: '🎯 Генетические совпадения ({count} {outOf}найдено)',
+      found: 'Найдено {count} генетических совпадений',
+      outOf: 'из {total} '
     }
   }
 } as const;

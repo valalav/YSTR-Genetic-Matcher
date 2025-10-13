@@ -21,6 +21,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { importProfiles, clearImportedProfiles } from '@/store/importedProfilesSlice';
 import type { RootState } from '@/store/store';
 import { Upload, Trash2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BackendSearchProps {
   onMatchesFound?: (matches: STRMatch[]) => void;
@@ -31,6 +32,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const dispatch = useDispatch();
   const importedProfiles = useSelector((state: RootState) => state.importedProfiles.profiles);
   const importStats = useSelector((state: RootState) => state.importedProfiles.stats);
+  const { t } = useTranslation();
 
   const [kitNumber, setKitNumber] = useState('');
   const [profile, setProfile] = useState<STRProfile | null>(null);
@@ -142,6 +144,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
           comparedMarkers: commonMarkers.length,
           identicalMarkers: commonMarkers.length - distance,
           percentIdentical: ((commonMarkers.length - distance) / commonMarkers.length) * 100,
+          hasAllRequiredMarkers: true,
         };
       });
 
@@ -394,6 +397,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         }));
 
         const filters: Filters = {
+          showEmptyHaplogroups,
           haplogroups: [haplogroup],
           includeSubclades: true
         };

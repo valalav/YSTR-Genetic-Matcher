@@ -55,7 +55,7 @@ class MatchingService {
     try {
       // Use optimized PostgreSQL function for batch matching (v5 with panel filtering)
       const query = `
-        SELECT * FROM find_matches_batch_v5($1, $2, $3, $4, $5, $6)
+        SELECT * FROM find_matches_batch($1, $2, $3, $4, $5, $6)
       `;
 
       const params = [

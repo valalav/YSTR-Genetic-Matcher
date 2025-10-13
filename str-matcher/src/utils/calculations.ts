@@ -281,12 +281,12 @@ const isHaplogroupMatch = (
   return profileHaplogroup.startsWith(filterHaplogroup);
 };
 // ⚡ КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Batch API вызовы вместо индивидуальных HTTP запросов
+// ⚡ КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Batch API вызовы вместо индивидуальных HTTP запросов
 export async function processMatches(matches: Match[], filters: Filters): Promise<Match[]> {
     if (filters.haplogroups.length === 0) return matches;
 
     console.log(`🚀 Оптимизированная обработка ${matches.length} матчей для ${filters.haplogroups.length} гаплогрупп`);
 
-    // ⚡ ГРУППИРУЕМ по уникальным гаплогруппам для batch обработки
     const uniqueHaplogroups = new Set<string>();
     const matchesWithHaplogroups = matches.filter(match => {
         if (!match.haplogroup) return false;
@@ -296,44 +296,101 @@ export async function processMatches(matches: Match[], filters: Filters): Promis
 
     if (uniqueHaplogroups.size === 0) return [];
 
-    // ⚡ BATCH API ВЫЗОВ: Один запрос вместо тысяч!
     try {
+        // ПЕРВЫЙ ШАГ: ВСЕГДА получаем субклады (дочерние) через batch API
         const batchPayload = {
             haplogroups: Array.from(uniqueHaplogroups),
             parentHaplogroups: filters.haplogroups
         };
 
         console.log(`📡 Отправляем batch запрос для ${uniqueHaplogroups.size} уникальных гаплогрупп`);
-        
-        // Используем относительный путь. Next.js проксирует этот запрос согласно правилу в next.config.js
+
         const response = await axios.post<{ results: Record<string, boolean> }>(`/api/batch-check-subclades`, batchPayload);
-        
         const results = response.data.results;
 
-        // ⚡ ФИЛЬТРУЕМ результаты используя batch ответ
-        const filteredMatches = matchesWithHaplogroups.filter(match => {
+        // Получаем субклады (дети)
+        const subcladeMatches = matchesWithHaplogroups.filter(match => {
             if (!match.haplogroup) return false;
-            
-            // ⚡ КЭШИРУЕМ результат для повторных использований
-            const cacheKey = `${match.haplogroup}_${filters.haplogroups.join('|')}`;
-            const isIncluded = results[match.haplogroup];
-            
-            if (isIncluded !== undefined) {
-                haplogroupCache.set(cacheKey, isIncluded);
-                cacheTimestamps.set(cacheKey, Date.now());
-                return isIncluded;
-            }
-            
-            return false;
+            return results[match.haplogroup] === true;
         });
 
-        console.log(`✅ Отфильтровано ${filteredMatches.length} из ${matches.length} матчей через batch API`);
-        return filteredMatches;
+        console.log(`✅ Найдено ${subcladeMatches.length} субкладов через batch API`);
+
+        // ВТОРОЙ ШАГ: Если showEmptyHaplogroups=true, ДОБАВЛЯЕМ родителей
+        if (filters.showEmptyHaplogroups) {
+            console.log(`🌳 Добавляем родительские гаплогруппы через haplotree`);
+
+            // Получаем полный путь предков для каждой гаплогруппы фильтра
+            const ancestorSets = new Map<string, Set<string>>();
+
+            for (const filterHaplo of filters.haplogroups) {
+                try {
+                    const response = await axios.get(`/api/haplogroup-path/${filterHaplo}`);
+
+                    // Извлекаем предков из FTDNA дерева (с вариантами)
+                    const ftdnaNodes = response.data?.ftdnaDetails?.path?.nodes || [];
+                    const ftdnaAncestors = ftdnaNodes.flatMap((node: any) => {
+                        const names = [node.name];
+                        // Добавляем все варианты с префиксом J-
+                        if (node.variants && Array.isArray(node.variants)) {
+                            names.push(...node.variants.map((v: string) => `J-${v}`));
+                        }
+                        return names.filter((name: string) => name);
+                    });
+
+                    // Извлекаем предков из YFull дерева (с вариантами)
+                    const yfullNodes = response.data?.yfullDetails?.path?.nodes || [];
+                    const yfullAncestors = yfullNodes.flatMap((node: any) => {
+                        const names = [node.name];
+                        // Добавляем все варианты с префиксом J-
+                        if (node.variants && Array.isArray(node.variants)) {
+                            names.push(...node.variants.map((v: string) => `J-${v}`));
+                        }
+                        return names.filter((name: string) => name);
+                    });
+
+                    // Объединяем оба дерева и добавляем сам фильтр
+                    const ancestors = new Set<string>([...ftdnaAncestors, ...yfullAncestors, filterHaplo]);
+
+                    ancestorSets.set(filterHaplo, ancestors);
+                    console.log(`📍 🔥 VARIANT SUPPORT ENABLED 🔥 ${filterHaplo} имеет ${ancestors.size} предков (FTDNA: ${ftdnaAncestors.length}, YFull: ${yfullAncestors.length})`);
+                } catch (error) {
+                    console.error(`❌ Ошибка получения haplotree для ${filterHaplo}:`, error);
+                    ancestorSets.set(filterHaplo, new Set());
+                }
+            }
+
+            // Находим родительские матчи (которые не являются субкладами)
+            const alreadyIncludedKits = new Set(subcladeMatches.map(m => m.id));
+            const parentMatches = matchesWithHaplogroups.filter(match => {
+                if (!match.haplogroup) return false;
+                if (alreadyIncludedKits.has(match.id)) return false; // Уже включен как субклад
+
+                // Проверяем: является ли гаплогруппа матча предком любого фильтра?
+                for (const [filterHaplo, ancestors] of ancestorSets.entries()) {
+                    if (ancestors.has(match.haplogroup)) {
+                        console.log(`✅ ${match.haplogroup} IS parent of ${filterHaplo} (добавлен)`);
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+            console.log(`✅ Найдено ${parentMatches.length} родительских гаплогрупп`);
+
+            // ОБЪЕДИНЯЕМ субклады + родителей
+            const combinedMatches = [...subcladeMatches, ...parentMatches];
+            console.log(`✅ ИТОГО: ${combinedMatches.length} матчей (${subcladeMatches.length} субкладов + ${parentMatches.length} родителей)`);
+            return combinedMatches;
+        }
+
+        // Обычная логика (без showEmptyHaplogroups): возвращаем только субклады
+        console.log(`✅ Возвращаем только субклады: ${subcladeMatches.length} матчей`);
+        return subcladeMatches;
 
     } catch (error) {
-        console.error('❌ Ошибка batch API, используем резервный метод:', error);
-        
-        // ⚡ РЕЗЕРВНЫЙ МЕТОД: Индивидуальные запросы с кэшированием
+        console.error('❌ Ошибка API, используем резервный метод:', error);
         return await processMatchesWithCache(matchesWithHaplogroups, filters);
     }
 }
