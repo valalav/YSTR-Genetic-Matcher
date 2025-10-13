@@ -241,10 +241,12 @@ pnpm-lock.yaml
 # models/
 # training_data/
 
-# Ignore large data files
+# Ignore large data files (stored in Google Drive - see LARGE_FILES.md)
 # ftdna_haplo/data/get.json is now tracked by Git LFS
 nul
 */nul
 scripts/upload_data.sql
+DB.xlsx
+R1b.xlsx
 *.tar.gz
 load_log.txt
