@@ -246,7 +246,5 @@ pnpm-lock.yaml
 nul
 */nul
 scripts/upload_data.sql
-DB.xlsx
-R1b.xlsx
 *.tar.gz
 load_log.txt
