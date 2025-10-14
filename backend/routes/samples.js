@@ -1,0 +1,480 @@
+const express = require('express');
+const Joi = require('joi');
+const { executeQuery } = require('../config/database');
+const { requireApiKey, logAudit } = require('../middleware/apiKeyAuth');
+const { validateRequest, asyncHandler } = require('../middleware/validation');
+const matchingService = require('../services/matchingService');
+
+const router = express.Router();
+
+// Helper function to invalidate cache after sample changes
+
+async function invalidateProfileCache(kitNumber) {
+  try {
+    // Удаляем ВСЕ кэши: и профили и matches
+    const profileKeys = await matchingService.redis.keys('profile:*');
+    const matchKeys = await matchingService.redis.keys('match:*');
+    const allKeys = [...profileKeys, ...matchKeys];
+    
+    if (allKeys.length > 0) {
+      await matchingService.redis.del(allKeys);
+      console.log('✅ Invalidated', allKeys.length, 'cache keys (', profileKeys.length, 'profiles,', matchKeys.length, 'matches) after sample change:', kitNumber);
+    }
+  } catch (cacheError) {
+    console.error('⚠️  Failed to invalidate cache:', cacheError.message);
+    // Don't throw - operation was successful
+  }
+}
+
+
+
+// Validation schemas
+const createSampleSchema = Joi.object({
+  kitNumber: Joi.string().required().max(20),
+  name: Joi.string().allow('').max(100),
+  country: Joi.string().allow('').max(50),
+  haplogroup: Joi.string().allow('').max(50),
+  markers: Joi.object().required().min(1)
+});
+
+const updateSampleSchema = Joi.object({
+  name: Joi.string().allow('').max(100),
+  country: Joi.string().allow('').max(50),
+  haplogroup: Joi.string().allow('').max(50),
+  markers: Joi.object()
+}).min(1); // At least one field must be present
+
+/**
+ * POST /api/samples - Create or update a sample
+ * Requires API key with 'samples.create' permission
+ */
+router.post('/',
+  requireApiKey('samples.create'),
+  validateRequest(createSampleSchema),
+  asyncHandler(async (req, res) => {
+    const { kitNumber, name, country, haplogroup, markers } = req.body;
+
+    try {
+      // Check if sample already exists
+      const existingQuery = await executeQuery(
+        'SELECT * FROM ystr_profiles WHERE kit_number = $1',
+        [kitNumber]
+      );
+
+      const oldData = existingQuery.rows[0] || null;
+      const isUpdate = !!oldData;
+
+      // Insert or update sample
+      const query = `
+        INSERT INTO ystr_profiles (kit_number, name, country, haplogroup, markers)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (kit_number)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          country = EXCLUDED.country,
+          haplogroup = EXCLUDED.haplogroup,
+          markers = EXCLUDED.markers,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING *
+      `;
+
+      const result = await executeQuery(query, [
+        kitNumber,
+        name || '',
+        country || '',
+        haplogroup || '',
+        JSON.stringify(markers)
+      ]);
+
+      const newData = result.rows[0];
+
+      // Log audit entry
+      await logAudit(
+        req,
+        isUpdate ? 'UPDATE' : 'CREATE',
+        'ystr_profiles',
+        kitNumber,
+        oldData,
+        newData,
+        true
+      );
+
+      
+    // Invalidate cache
+    await invalidateProfileCache(kitNumber);
+
+    res.status(isUpdate ? 200 : 201).json({
+        success: true,
+        action: isUpdate ? 'updated' : 'created',
+        sample: {
+          kitNumber: newData.kit_number,
+          name: newData.name,
+          country: newData.country,
+          haplogroup: newData.haplogroup,
+          markers: newData.markers,
+          createdAt: newData.created_at,
+          updatedAt: newData.updated_at
+        }
+      });
+    } catch (error) {
+      // Log failed operation
+      await logAudit(
+        req,
+        'CREATE',
+        'ystr_profiles',
+        kitNumber,
+        null,
+        null,
+        false,
+        error.message
+      );
+
+      throw error;
+    }
+  })
+);
+
+/**
+ * PUT /api/samples/:kitNumber - Update existing sample
+ * Requires API key with 'samples.update' permission
+ */
+router.put('/:kitNumber',
+  requireApiKey('samples.update'),
+  validateRequest(updateSampleSchema),
+  asyncHandler(async (req, res) => {
+    const { kitNumber } = req.params;
+    const updates = req.body;
+
+    try {
+      // Get existing sample
+      const existingQuery = await executeQuery(
+        'SELECT * FROM ystr_profiles WHERE kit_number = $1',
+        [kitNumber]
+      );
+
+      if (existingQuery.rows.length === 0) {
+        await logAudit(
+          req,
+          'UPDATE',
+          'ystr_profiles',
+          kitNumber,
+          null,
+          null,
+          false,
+          'Sample not found'
+        );
+
+        return res.status(404).json({
+          error: 'Sample not found',
+          kitNumber
+        });
+      }
+
+      const oldData = existingQuery.rows[0];
+
+      // Build UPDATE query dynamically
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
+
+      if (updates.name !== undefined) {
+        updateFields.push(`name = $${paramIndex++}`);
+        updateValues.push(updates.name);
+      }
+      if (updates.country !== undefined) {
+        updateFields.push(`country = $${paramIndex++}`);
+        updateValues.push(updates.country);
+      }
+      if (updates.haplogroup !== undefined) {
+        updateFields.push(`haplogroup = $${paramIndex++}`);
+        updateValues.push(updates.haplogroup);
+      }
+      if (updates.markers !== undefined) {
+        updateFields.push(`markers = $${paramIndex++}`);
+        updateValues.push(JSON.stringify(updates.markers));
+      }
+
+      updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+      updateValues.push(kitNumber);
+
+      const query = `
+        UPDATE ystr_profiles
+        SET ${updateFields.join(', ')}
+        WHERE kit_number = $${paramIndex}
+        RETURNING *
+      `;
+
+      const result = await executeQuery(query, updateValues);
+      const newData = result.rows[0];
+
+      // Log audit entry
+      await logAudit(
+        req,
+        'UPDATE',
+        'ystr_profiles',
+        kitNumber,
+        oldData,
+        newData,
+        true
+      );
+
+      
+    // Invalidate cache
+    await invalidateProfileCache(kitNumber);
+
+    res.json({
+        success: true,
+        action: 'updated',
+        sample: {
+          kitNumber: newData.kit_number,
+          name: newData.name,
+          country: newData.country,
+          haplogroup: newData.haplogroup,
+          markers: newData.markers,
+          createdAt: newData.created_at,
+          updatedAt: newData.updated_at
+        }
+      });
+    } catch (error) {
+      await logAudit(
+        req,
+        'UPDATE',
+        'ystr_profiles',
+        kitNumber,
+        null,
+        null,
+        false,
+        error.message
+      );
+
+      throw error;
+    }
+  })
+);
+
+/**
+ * DELETE /api/samples/:kitNumber - Delete a sample
+ * Requires API key with 'samples.delete' permission
+ */
+router.delete('/:kitNumber',
+  requireApiKey('samples.delete'),
+  asyncHandler(async (req, res) => {
+    const { kitNumber } = req.params;
+
+    try {
+      // Get existing sample
+      const existingQuery = await executeQuery(
+        'SELECT * FROM ystr_profiles WHERE kit_number = $1',
+        [kitNumber]
+      );
+
+      if (existingQuery.rows.length === 0) {
+        await logAudit(
+          req,
+          'DELETE',
+          'ystr_profiles',
+          kitNumber,
+          null,
+          null,
+          false,
+          'Sample not found'
+        );
+
+        return res.status(404).json({
+          error: 'Sample not found',
+          kitNumber
+        });
+      }
+
+      const oldData = existingQuery.rows[0];
+
+      // Delete sample
+      await executeQuery(
+        'DELETE FROM ystr_profiles WHERE kit_number = $1',
+        [kitNumber]
+      );
+
+      // Log audit entry
+      await logAudit(
+        req,
+        'DELETE',
+        'ystr_profiles',
+        kitNumber,
+        oldData,
+        null,
+        true
+      );
+
+      
+    // Invalidate cache
+    await invalidateProfileCache(kitNumber);
+
+    res.json({
+        success: true,
+        action: 'deleted',
+        kitNumber
+      });
+    } catch (error) {
+      await logAudit(
+        req,
+        'DELETE',
+        'ystr_profiles',
+        kitNumber,
+        null,
+        null,
+        false,
+        error.message
+      );
+
+      throw error;
+    }
+  })
+);
+
+/**
+ * POST /api/samples/validate-key - Quick API key validation
+ * Tests if the provided API key has update permissions
+ */
+router.post('/validate-key',
+  requireApiKey('samples.update'),
+  asyncHandler(async (req, res) => {
+    // If we got here, the API key is valid
+    res.json({
+      success: true,
+      valid: true,
+      message: 'API key is valid'
+    });
+  })
+);
+
+/**
+ * GET /api/samples - Search samples with filters
+ * Query params: search, name, country, haplogroup, limit, offset
+ */
+router.get('/',
+  asyncHandler(async (req, res) => {
+    const { search, name, country, haplogroup, limit = 50, offset = 0 } = req.query;
+
+    // Build WHERE clause dynamically
+    const conditions = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (search) {
+      // Search across multiple fields
+      conditions.push(`(
+        kit_number ILIKE $${paramIndex} OR
+        name ILIKE $${paramIndex} OR
+        country ILIKE $${paramIndex} OR
+        haplogroup ILIKE $${paramIndex}
+      )`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (name) {
+      conditions.push(`name ILIKE $${paramIndex}`);
+      params.push(`%${name}%`);
+      paramIndex++;
+    }
+
+    if (country) {
+      conditions.push(`country ILIKE $${paramIndex}`);
+      params.push(`%${country}%`);
+      paramIndex++;
+    }
+
+    if (haplogroup) {
+      conditions.push(`haplogroup ILIKE $${paramIndex}`);
+      params.push(`%${haplogroup}%`);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Count total matching rows
+    const countQuery = `SELECT COUNT(*) as total FROM ystr_profiles ${whereClause}`;
+    const countResult = await executeQuery(countQuery, params);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Fetch paginated results
+    const dataQuery = `
+      SELECT 
+        kit_number,
+        name,
+        country,
+        haplogroup,
+        markers,
+        created_at,
+        updated_at
+      FROM ystr_profiles
+      ${whereClause}
+      ORDER BY updated_at DESC, kit_number ASC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    const dataParams = [...params, parseInt(limit), parseInt(offset)];
+    const dataResult = await executeQuery(dataQuery, dataParams);
+
+    const samples = dataResult.rows.map(row => ({
+      kitNumber: row.kit_number,
+      name: row.name,
+      country: row.country,
+      haplogroup: row.haplogroup,
+      markers: row.markers,
+      markerCount: Object.keys(row.markers || {}).length,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+
+    res.json({
+      success: true,
+      samples,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: (parseInt(offset) + samples.length) < total
+      }
+    });
+  })
+);
+
+
+/**
+ * GET /api/samples/:kitNumber - Get sample details (public, no API key required)
+ */
+router.get('/:kitNumber',
+  asyncHandler(async (req, res) => {
+    const { kitNumber } = req.params;
+
+    const result = await executeQuery(
+      'SELECT * FROM ystr_profiles WHERE kit_number = $1',
+      [kitNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Sample not found',
+        kitNumber
+      });
+    }
+
+    const sample = result.rows[0];
+
+    res.json({
+      success: true,
+      sample: {
+        kitNumber: sample.kit_number,
+        name: sample.name,
+        country: sample.country,
+        haplogroup: sample.haplogroup,
+        markers: sample.markers,
+        createdAt: sample.created_at,
+        updatedAt: sample.updated_at
+      }
+    });
+  })
+);
+
+module.exports = router;
