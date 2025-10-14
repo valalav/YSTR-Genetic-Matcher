@@ -165,7 +165,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({
     setMessage(null);
 
     try {
-      const response = await fetch(`${backendUrl}/samples`, {
+      const response = await fetch(`${backendUrl}/samples/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({
       // Refresh entire IndexedDB from PostgreSQL to ensure sync
       try {
         await dbManager.init();
-        const refreshResponse = await fetch(`${backendUrl}/samples`);
+        const refreshResponse = await fetch(`${backendUrl}/samples/`);
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
           const profiles: STRProfile[] = refreshData.samples || [];
@@ -251,7 +251,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({
       // Refresh entire IndexedDB from PostgreSQL to ensure sync
       try {
         await dbManager.init();
-        const refreshResponse = await fetch(`${backendUrl}/samples`);
+        const refreshResponse = await fetch(`${backendUrl}/samples/`);
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
           const profiles: STRProfile[] = refreshData.samples || [];
@@ -361,7 +361,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({
 
     for (const sample of parsedSamples) {
       try {
-        const response = await fetch(`${backendUrl}/samples`, {
+        const response = await fetch(`${backendUrl}/samples/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -399,7 +399,7 @@ const SampleManager: React.FC<SampleManagerProps> = ({
 
     try {
       // Fetch all profiles from backend
-      const response = await fetch(`${backendUrl}/samples`);
+      const response = await fetch(`${backendUrl}/samples/`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch profiles from backend');
