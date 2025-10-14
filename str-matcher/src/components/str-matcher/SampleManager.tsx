@@ -183,18 +183,24 @@ const SampleManager: React.FC<SampleManagerProps> = ({
       setMessage({ type: 'success', text: `Sample ${sample.kitNumber} ${data.action} successfully` });
 
       // Refresh entire IndexedDB from PostgreSQL to ensure sync
+      // Update only the changed profile in IndexedDB (don't clear entire database!)
       try {
         await dbManager.init();
-        const refreshResponse = await fetch(`${backendUrl}/samples/`);
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          const profiles: STRProfile[] = refreshData.samples || [];
-          await dbManager.clearProfiles();
-          await dbManager.saveProfiles(profiles);
-          console.log(`✅ IndexedDB refreshed with ${profiles.length} profiles after save`);
-        }
+
+        // Convert backend response to STRProfile format
+        const updatedProfile: STRProfile = {
+          kitNumber: data.sample.kitNumber,
+          name: data.sample.name || '',
+          country: data.sample.country || '',
+          haplogroup: data.sample.haplogroup || '',
+          ...data.sample.markers  // Spread markers into profile
+        };
+
+        // Save/update only this profile (keeps all other profiles intact)
+        await dbManager.saveProfiles([updatedProfile]);
+        console.log(`✅ IndexedDB updated with profile ${data.sample.kitNumber}`);
       } catch (dbError) {
-        console.error('Failed to refresh IndexedDB:', dbError);
+        console.error('Failed to update IndexedDB:', dbError);
         // Don't throw - the backend update was successful
       }
 
@@ -249,18 +255,15 @@ const SampleManager: React.FC<SampleManagerProps> = ({
       setMessage({ type: 'success', text: `Sample ${kitNumberToDelete} deleted successfully` });
 
       // Refresh entire IndexedDB from PostgreSQL to ensure sync
+      // Delete only the removed profile from IndexedDB (don't clear entire database!)
       try {
         await dbManager.init();
-        const refreshResponse = await fetch(`${backendUrl}/samples/`);
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          const profiles: STRProfile[] = refreshData.samples || [];
-          await dbManager.clearProfiles();
-          await dbManager.saveProfiles(profiles);
-          console.log(`✅ IndexedDB refreshed with ${profiles.length} profiles after delete`);
-        }
+
+        // Remove this profile from IndexedDB
+        await dbManager.deleteProfile(kitNumberToDelete);
+        console.log(`✅ Removed profile ${kitNumberToDelete} from IndexedDB`);
       } catch (dbError) {
-        console.error('Failed to refresh IndexedDB:', dbError);
+        console.error('Failed to update IndexedDB:', dbError);
         // Don't throw - the backend deletion was successful
       }
 
