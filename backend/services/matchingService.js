@@ -69,6 +69,20 @@ class MatchingService {
 
       const result = await executeQuery(query, params);
 
+      // 🔍 DEBUG LOGGING: Show raw SQL response for specific profiles
+      const debugProfiles = result.rows.filter(row =>
+        row.kit_number === '55520' || row.kit_number === 'IN87501'
+      );
+      if (debugProfiles.length > 0) {
+        console.log('🔍 DEBUG: Raw SQL response for test profiles:');
+        debugProfiles.forEach(row => {
+          console.log(`  Profile: ${row.kit_number}`);
+          console.log(`    genetic_distance: ${row.genetic_distance}`);
+          console.log(`    compared_markers: ${row.compared_markers}`);
+          console.log(`    DYS576: ${row.markers?.DYS576 || 'N/A'}`);
+        });
+      }
+
       const matches = result.rows.map(row => ({
         profile: {
           kitNumber: row.kit_number,
