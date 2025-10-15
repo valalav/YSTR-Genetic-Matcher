@@ -1,5 +1,6 @@
 const { executeQuery, withTransaction } = require('../config/database');
 const Redis = require('redis');
+const crypto = require('crypto');
 
 class MatchingService {
   constructor() {
@@ -69,21 +70,39 @@ class MatchingService {
 
       const result = await executeQuery(query, params);
 
-      const matches = result.rows.map(row => ({
-        profile: {
-          kitNumber: row.kit_number,
-          name: row.name,
-          country: row.country,
-          haplogroup: row.haplogroup,
-          markers: row.markers
-        },
-        distance: row.genetic_distance,
-        comparedMarkers: row.compared_markers,
-        identicalMarkers: row.compared_markers - row.genetic_distance,
-        percentIdentical: row.percent_identical || (row.compared_markers > 0
-          ? ((row.compared_markers - row.genetic_distance) / row.compared_markers * 100).toFixed(1)
-          : 0)
-      }));
+      console.log(`🔍 SQL returned ${result.rows.length} total rows`);
+
+      // 🔍 DEBUG LOGGING: Show raw SQL response for specific profiles
+      const debugProfiles = result.rows.filter(row =>
+        row.kit_number === '55520' || row.kit_number === 'IN87501'
+      );
+      if (debugProfiles.length > 0) {
+        console.log('🔍 DEBUG: Raw SQL response for test profiles:');
+        debugProfiles.forEach(row => {
+          console.log(`  Profile: ${row.kit_number}`);
+          console.log(`    genetic_distance: ${row.genetic_distance}`);
+          console.log(`    compared_markers: ${row.compared_markers}`);
+          console.log(`    DYS576: ${row.markers?.DYS576 || 'N/A'}`);
+        });
+      }
+
+      const matches = result.rows
+        .filter(row => row.genetic_distance > 0)  // ✅ Exclude GD=0 (self-match)
+        .map(row => ({
+          profile: {
+            kitNumber: row.kit_number,
+            name: row.name,
+            country: row.country,
+            haplogroup: row.haplogroup,
+            markers: row.markers
+          },
+          distance: row.genetic_distance,
+          comparedMarkers: row.compared_markers,
+          identicalMarkers: row.compared_markers - row.genetic_distance,
+          percentIdentical: row.percent_identical || (row.compared_markers > 0
+            ? ((row.compared_markers - row.genetic_distance) / row.compared_markers * 100).toFixed(1)
+            : 0)
+        }));
 
       const duration = Date.now() - startTime;
       console.log(`🔍 Found ${matches.length} matches in ${duration}ms`);
@@ -309,7 +328,11 @@ class MatchingService {
       markers: queryMarkers,
       ...options
     };
-    return `match:${Buffer.from(JSON.stringify(keyData)).toString('base64').substring(0, 50)}`;
+    // ✅ CRITICAL FIX: Use SHA-256 hash instead of truncated base64 to prevent collisions
+    // Previous bug: substring(0, 50) caused cache key collisions for similar profiles
+    // Example: 55520 (DYS576="16") and IN87501 (DYS576="17") had same cache key!
+    const hash = crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
+    return `match:${hash}`;
   }
 
   // Clear all matching-related caches
