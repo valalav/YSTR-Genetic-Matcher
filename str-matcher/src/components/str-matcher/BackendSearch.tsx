@@ -206,26 +206,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         }
       }
 
-      // Filter markers based on selected panel
-      const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
-      const panelMarkerSet = new Set(panelMarkers);
-      const filteredMarkers = Object.fromEntries(
-        Object.entries(foundProfile.markers).filter(([marker]) =>
-          panelMarkerSet.has(marker as any)
-        )
-      );
+      // Set profile with ALL markers (SQL will filter by FTDNA order)
+      setProfile(foundProfile);
+      setCustomMarkers(foundProfile.markers);
 
-      // Set profile with filtered markers only
-      setProfile({
-        ...foundProfile,
-        markers: filteredMarkers
-      });
-      setCustomMarkers(filteredMarkers);
-
-      // Then search for matches using only the panel's markers
-      // Note: We pass haplogroupFilter to backend, but also do FTDNA filtering on frontend
+      // Search for matches - send ALL markers, SQL selects by marker_order table
       const searchMatches = await findMatches({
-        markers: filteredMarkers,
+        markers: foundProfile.markers,
         maxDistance,
         limit: maxResults,
         markerCount,
@@ -339,40 +326,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         }
       }
 
-      // Filter markers based on selected panel (same logic as handleSearchByKit)
-      console.log(`🔍 Filtering markers for panel Y${markerCount}:`);
-      console.log(`🔍 markerCount =`, markerCount);
+      // Set profile with ALL markers (SQL will filter by FTDNA order)
+      setProfile(foundProfile);
+      setCustomMarkers(foundProfile.markers);
 
-      const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
-      console.log(`🔍 panelMarkers.length =`, panelMarkers.length);
-      console.log(`🔍 foundProfile.markers keys =`, Object.keys(foundProfile.markers));
-
-      const panelMarkerSet = new Set(panelMarkers);
-      let filteredMarkers = Object.fromEntries(
-        Object.entries(foundProfile.markers).filter(([marker]) =>
-          panelMarkerSet.has(marker as any)
-        )
-      );
-
-      console.log(`🔍 filteredMarkers after filtering =`, Object.keys(filteredMarkers).length, 'markers');
-
-      // DEFENSIVE CHECK: If all markers were filtered out, use all markers
-      if (Object.keys(filteredMarkers).length === 0) {
-        console.error(`⚠️  All markers filtered out! markerCount=${markerCount}, panelMarkers=${panelMarkers.length}`);
-        console.error(`⚠️  Using all profile markers as fallback (${Object.keys(foundProfile.markers).length} markers)`);
-        filteredMarkers = foundProfile.markers;
-      }
-
-      // Set profile with filtered markers only
-      setProfile({
-        ...foundProfile,
-        markers: filteredMarkers
-      });
-      setCustomMarkers(filteredMarkers);
-
-      // Search for matches using only the panel's markers
+      // Search for matches - send ALL markers, SQL selects by marker_order table
       const searchMatches = await findMatches({
-        markers: filteredMarkers,
+        markers: foundProfile.markers,
         maxDistance,
         limit: maxResults,
         markerCount,
