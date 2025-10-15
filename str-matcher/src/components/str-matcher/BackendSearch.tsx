@@ -38,7 +38,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [filteredMatches, setFilteredMatches] = useState<STRMatch[]>([]);
   const [maxDistance, setMaxDistance] = useState(25);
   const [maxResults, setMaxResults] = useState(150);
-  const [markerCount, setMarkerCount] = useState<12 | 25 | 37 | 67 | 111>(37);
+  const [markerCount, setMarkerCount] = useState<12 | 37 | 67 | 111>(37);
   const [dbStats, setDbStats] = useState<any>(null);
   const [customMarkers, setCustomMarkers] = useState<Record<string, string>>({});
   const [searchMode, setSearchMode] = useState<'kit' | 'markers'>('kit');
@@ -340,13 +340,28 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       }
 
       // Filter markers based on selected panel (same logic as handleSearchByKit)
+      console.log(`🔍 Filtering markers for panel Y${markerCount}:`);
+      console.log(`🔍 markerCount =`, markerCount);
+
       const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
+      console.log(`🔍 panelMarkers.length =`, panelMarkers.length);
+      console.log(`🔍 foundProfile.markers keys =`, Object.keys(foundProfile.markers));
+
       const panelMarkerSet = new Set(panelMarkers);
-      const filteredMarkers = Object.fromEntries(
+      let filteredMarkers = Object.fromEntries(
         Object.entries(foundProfile.markers).filter(([marker]) =>
           panelMarkerSet.has(marker as any)
         )
       );
+
+      console.log(`🔍 filteredMarkers after filtering =`, Object.keys(filteredMarkers).length, 'markers');
+
+      // DEFENSIVE CHECK: If all markers were filtered out, use all markers
+      if (Object.keys(filteredMarkers).length === 0) {
+        console.error(`⚠️  All markers filtered out! markerCount=${markerCount}, panelMarkers=${panelMarkers.length}`);
+        console.error(`⚠️  Using all profile markers as fallback (${Object.keys(foundProfile.markers).length} markers)`);
+        filteredMarkers = foundProfile.markers;
+      }
 
       // Set profile with filtered markers only
       setProfile({
