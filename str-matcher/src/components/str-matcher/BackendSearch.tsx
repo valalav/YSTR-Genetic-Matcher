@@ -339,12 +339,25 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         }
       }
 
-      setProfile(foundProfile);
-      setCustomMarkers(foundProfile.markers);
+      // Filter markers based on selected panel (same logic as handleSearchByKit)
+      const panelMarkers = markerGroups[markerCount as keyof typeof markerGroups] || [];
+      const panelMarkerSet = new Set(panelMarkers);
+      const filteredMarkers = Object.fromEntries(
+        Object.entries(foundProfile.markers).filter(([marker]) =>
+          panelMarkerSet.has(marker as any)
+        )
+      );
 
-      // Search for matches with the new profile
+      // Set profile with filtered markers only
+      setProfile({
+        ...foundProfile,
+        markers: filteredMarkers
+      });
+      setCustomMarkers(filteredMarkers);
+
+      // Search for matches using only the panel's markers
       const searchMatches = await findMatches({
-        markers: foundProfile.markers,
+        markers: filteredMarkers,
         maxDistance,
         limit: maxResults,
         markerCount,
