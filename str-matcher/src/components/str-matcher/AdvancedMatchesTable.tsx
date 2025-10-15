@@ -44,6 +44,24 @@ interface MarkerRarity {
   level: 'common' | 'uncommon' | 'rare' | 'very-rare' | 'extremely-rare';
 }
 
+
+// Helper function to determine marker panel based on marker count
+const getMarkerPanel = (markerCount: number): string => {
+  if (markerCount <= 12) return 'Y12';
+  if (markerCount <= 25) return 'Y25';
+  if (markerCount <= 37) return 'Y37';
+  if (markerCount <= 67) return 'Y67';
+  return 'Y111';
+};
+
+const getMarkerPanelColor = (markerCount: number): string => {
+  if (markerCount <= 12) return 'bg-gray-100 text-gray-600';
+  if (markerCount <= 25) return 'bg-blue-100 text-blue-700';
+  if (markerCount <= 37) return 'bg-green-100 text-green-700';
+  if (markerCount <= 67) return 'bg-purple-100 text-purple-700';
+  return 'bg-indigo-100 text-indigo-700';
+};
+
 const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile, isSearching = false }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
@@ -371,7 +389,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                   Haplogroup
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
-                  ГР
+                  GD
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
                   STR
@@ -515,18 +533,26 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                       </button>
                       <div className="flex items-center gap-1">
                         {onKitNumberClick ? (
-                          <button
-                            onClick={() => !isSearching && match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
-                            disabled={isSearching}
-                            className={`font-bold transition-colors ${
-                              isSearching
-                                ? 'text-gray-400 cursor-not-allowed'
-                                : 'text-blue-600 hover:text-blue-800 hover:underline cursor-pointer'
-                            }`}
-                            title={isSearching ? "Search in progress..." : "Click to search matches for this profile"}
-                          >
-                            {match.profile?.kitNumber || 'N/A'}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => !isSearching && match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
+                              disabled={isSearching}
+                              className={`font-bold transition-colors ${
+                                isSearching
+                                  ? 'text-gray-400 cursor-not-allowed'
+                                  : 'text-blue-600 hover:text-blue-800 hover:underline cursor-pointer'
+                              }`}
+                              title={isSearching ? "Search in progress..." : "Click to search matches for this profile"}
+                            >
+                              {match.profile?.kitNumber || 'N/A'}
+                            </button>
+                            <span
+                              className={`text-[9px] font-semibold px-1 py-0.5 rounded ${getMarkerPanelColor(Object.keys(match.profile?.markers || {}).length)}`}
+                              title={`${Object.keys(match.profile?.markers || {}).length} markers`}
+                            >
+                              {getMarkerPanel(Object.keys(match.profile?.markers || {}).length)}
+                            </span>
+                          </div>
                         ) : (
                           <span className="font-bold text-blue-600">
                             {match.profile?.kitNumber || 'N/A'}
