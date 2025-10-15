@@ -51,6 +51,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   const [selectedHaplogroupInfo, setSelectedHaplogroupInfo] = useState<string | null>(null);
   const [editingKitNumber, setEditingKitNumber] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Load database stats on mount
   useEffect(() => {
@@ -315,7 +316,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
   }, []);
 
   const handleKitNumberClick = useCallback(async (clickedKitNumber: string) => {
-    // Устанавливаем новый kit number и запускаем поиск
+    // Prevent multiple simultaneous searches
+    if (isSearching) {
+      console.log('⏳ Search already in progress, skipping...');
+      return;
+    }
+
+    setIsSearching(true);
     setKitNumber(clickedKitNumber);
 
     try {
@@ -327,6 +334,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         foundProfile = await getProfile(clickedKitNumber);
         if (!foundProfile) {
           alert(`Profile with kit number ${clickedKitNumber} not found`);
+          setIsSearching(false);
           return;
         }
       }
@@ -334,7 +342,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
       setProfile(foundProfile);
       setCustomMarkers(foundProfile.markers);
 
-      // Ищем совпадения для нового профиля
+      // Search for matches with the new profile
       const searchMatches = await findMatches({
         markers: foundProfile.markers,
         maxDistance,
@@ -343,7 +351,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
       });
 
-      // Фильтруем сам профиль из результатов
+      // Filter out the profile itself from results
       const cleanedMatches = searchMatches.filter(match =>
         match.profile?.kitNumber !== foundProfile.kitNumber
       );
@@ -357,8 +365,13 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
 
     } catch (error) {
       console.error('Search failed:', error);
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Search failed: ${errorMessage}`);
+    } finally {
+      setIsSearching(false);
     }
-  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound, mergeProfiles, importedProfiles]);
+  }, [maxDistance, maxResults, markerCount, selectedHaplogroup, getProfile, findMatches, onMatchesFound, mergeProfiles, importedProfiles, isSearching]);
 
   const handleRemoveMarker = useCallback(async (markerToRemove: string) => {
     if (!profile) return;
@@ -871,6 +884,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
               onHaplogroupClick={handleHaplogroupClick}
               onHaplogroupInfo={setSelectedHaplogroupInfo}
               onEditProfile={setEditingKitNumber}
+              isSearching={isSearching}
             />
         </div>
       )}

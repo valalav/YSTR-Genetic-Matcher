@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { API_URL } from '@/config/axios';
 import type { STRProfile, STRMatch } from '@/utils/constants';
 
@@ -50,17 +50,50 @@ interface DatabaseStats {
 export const useBackendAPI = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const findMatches = useCallback(async (params: BackendSearchParams): Promise<STRMatch[]> => {
+    // Cancel previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      console.log('⏹️  Cancelled previous search request');
+    }
+
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     setLoading(true);
     setError(null);
 
     try {
       console.log("🔍 Frontend sending params:", params);
 
+      // Filter out invalid marker values (must be numeric or ranges like "13-14")
+      const validMarkers = Object.fromEntries(
+        Object.entries(params.markers).filter(([marker, value]) => {
+          const strValue = String(value).trim();
+          // Keep only numeric values (including ranges and decimals)
+          const isValid = strValue && /^[0-9]+(.[0-9]+)?(-[0-9]+(.[0-9]+)?)?$/.test(strValue);
+          if (!isValid && strValue) {
+            console.warn(`⚠️  Filtered invalid marker ${marker}: "${value}"`);
+          }
+          return isValid;
+        })
+      );
+
+      if (Object.keys(validMarkers).length === 0) {
+        throw new Error('No valid markers found in profile. All markers contain invalid values.');
+      }
+
+      const filteredCount = Object.keys(params.markers).length - Object.keys(validMarkers).length;
+      if (filteredCount > 0) {
+        console.log(`🔍 Filtered ${filteredCount} invalid markers, sending ${Object.keys(validMarkers).length} valid markers`);
+      }
+
       // Transform params to match API expectations
       const apiParams = {
-        markers: params.markers,
+        markers: validMarkers,  // Use filtered markers
         maxDistance: params.maxDistance ?? 25,
         maxResults: params.limit ?? 1000,
         markerCount: params.markerCount ?? 37,
@@ -82,12 +115,31 @@ export const useBackendAPI = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(apiParams),
+        signal  // Add abort signal
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.error || errorData?.details?.[0]?.message || `HTTP error! status: ${response.status}`;
-        console.error('API Error:', errorData);
+        // Improved error handling
+        let errorData = null;
+        let errorMessage = `HTTP error! status: ${response.status}`;
+
+        try {
+          const text = await response.text();
+          if (text) {
+            errorData = JSON.parse(text);
+            errorMessage = errorData?.error || errorData?.message || errorData?.details?.[0]?.message || errorMessage;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse error response:', parseError);
+        }
+
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          message: errorMessage
+        });
+
         throw new Error(errorMessage);
       }
 
@@ -116,6 +168,12 @@ export const useBackendAPI = () => {
       return matches;
 
     } catch (err) {
+      // Handle abort - request was cancelled
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('⏹️  Request was cancelled');
+        return [];  // Return empty array for cancelled requests
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       throw err;

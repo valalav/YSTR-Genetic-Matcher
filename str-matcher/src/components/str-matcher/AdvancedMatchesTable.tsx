@@ -16,6 +16,7 @@ interface AdvancedMatchesTableProps {
   onHaplogroupClick?: (haplogroup: string) => void;
   onHaplogroupInfo?: (haplogroup: string) => void;
   onEditProfile?: (kitNumber: string) => void;
+  isSearching?: boolean;
 }
 
 // FTDNA marker order (111 markers)
@@ -43,7 +44,7 @@ interface MarkerRarity {
   level: 'common' | 'uncommon' | 'rare' | 'very-rare' | 'extremely-rare';
 }
 
-const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile }) => {
+const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile, isSearching = false }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [copiedKitNumber, setCopiedKitNumber] = useState<string | null>(null);
@@ -515,9 +516,14 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                       <div className="flex items-center gap-1">
                         {onKitNumberClick ? (
                           <button
-                            onClick={() => match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
-                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                            title="Click to search matches for this profile"
+                            onClick={() => !isSearching && match.profile?.kitNumber && onKitNumberClick(match.profile.kitNumber)}
+                            disabled={isSearching}
+                            className={`font-bold transition-colors ${
+                              isSearching
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-blue-600 hover:text-blue-800 hover:underline cursor-pointer'
+                            }`}
+                            title={isSearching ? "Search in progress..." : "Click to search matches for this profile"}
                           >
                             {match.profile?.kitNumber || 'N/A'}
                           </button>

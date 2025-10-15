@@ -130,19 +130,31 @@ app.use('/api/admin', require('./routes/admin'));
 app.use((error, req, res, next) => {
   console.error('❌ Unhandled error:', error);
 
+  // Handle marker validation errors
+  if (error.message && error.message.includes('Invalid marker value')) {
+    return res.status(400).json({
+      error: 'Invalid marker data',
+      message: error.message,
+      details: 'One or more marker values are invalid. Marker values must be numeric (e.g., "13", "13.2", "13-14").',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // Handle multer errors
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
       error: 'File too large',
-      maxSize: process.env.MAX_FILE_SIZE || '100MB'
+      maxSize: process.env.MAX_FILE_SIZE || '100MB',
+      timestamp: new Date().toISOString()
     });
   }
 
-  // Handle validation errors
+  // Handle validation errors (Joi)
   if (error.isJoi) {
     return res.status(400).json({
       error: 'Validation failed',
-      details: error.details.map(d => d.message)
+      details: error.details.map(d => d.message),
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -150,15 +162,26 @@ app.use((error, req, res, next) => {
   if (error.code && error.code.startsWith('23')) { // PostgreSQL constraint violations
     return res.status(400).json({
       error: 'Database constraint violation',
-      details: error.message
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Handle "No valid markers" error
+  if (error.message && error.message.includes('No valid markers')) {
+    return res.status(400).json({
+      error: 'No valid markers',
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 
   // Generic error response
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'production'
+  const statusCode = error.statusCode || 500;
+  res.status(statusCode).json({
+    error: statusCode === 500 && process.env.NODE_ENV === 'production'
       ? 'Internal server error'
-      : error.message,
+      : error.message || 'An error occurred',
     timestamp: new Date().toISOString()
   });
 });
