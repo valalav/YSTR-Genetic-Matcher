@@ -313,26 +313,26 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold text-gray-800">
-            🎯 Генетические совпадения ({filteredMatches.length} {filteredMatches.length !== visibleMatches.length && `из ${visibleMatches.length}`} найдено)
+            🎯 Genetic Matches ({filteredMatches.length} {filteredMatches.length !== visibleMatches.length && `из ${visibleMatches.length}`} found)
           </h2>
           <button
             onClick={exportToCSV}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            title="Экспортировать совпадения в CSV"
+            title="Export matches to CSV"
           >
             <Download className="h-4 w-4" />
-            <span className="text-sm font-medium">Экспорт CSV</span>
+            <span className="text-sm font-medium">Export CSV</span>
           </button>
         </div>
         <p className="text-sm text-gray-600">
           {filteredMatches.length !== visibleMatches.length ? (
-            <>Отфильтровано {filteredMatches.length} из {visibleMatches.length} совпадений</>
+            <>Filtered {filteredMatches.length} of {visibleMatches.length} matches</>
           ) : (
-            <>Найдено {visibleMatches.length} генетических совпадений</>
+            <>Found {visibleMatches.length} генетических matches</>
           )}
           {hiddenKitNumbers.size > 0 && (
             <span className="ml-2 text-orange-600">
-              (скрыто: {hiddenKitNumbers.size})
+              (hidden: {hiddenKitNumbers.size})
             </span>
           )}
         </p>
@@ -341,7 +341,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
             onClick={clearHiddenKitNumbers}
             className="mt-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
           >
-            Показать все скрытые ({hiddenKitNumbers.size})
+            Show all hidden ({hiddenKitNumbers.size})
           </button>
         )}
       </div>
@@ -355,19 +355,19 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
               {/* Main header row */}
               <tr className="bg-gradient-to-r from-slate-800 via-blue-900 to-indigo-900 text-white">
                 <th className="sticky left-0 bg-gradient-to-r from-slate-800 to-blue-900 border-r border-blue-700 px-2 py-1.5 text-center z-10 w-[100px] max-w-[100px] font-bold text-sm">
-                  Набор
+                  Kit
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[50px] max-w-[50px] font-bold text-sm">
 
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[150px] max-w-[150px] font-bold text-sm">
-                  Имя
+                  Name
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[120px] max-w-[120px] font-bold text-sm">
-                  Страна
+                  Country
                 </th>
                 <th className="border-r border-blue-700 px-2 py-1.5 text-center w-[180px] max-w-[180px] font-bold text-sm">
-                  Гаплогруппа
+                  Haplogroup
                 </th>
                 <th className="border-r border-blue-700 px-2 py-2 text-center w-[60px] max-w-[60px] font-bold text-sm">
                   ГР
@@ -398,7 +398,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                         checked={markerFilters[marker] || false}
                         onChange={() => toggleMarkerFilter(marker)}
                         className="cursor-pointer w-3 h-3"
-                        title={`Фильтровать: показать только совпадения по ${marker}`}
+                        title={`Filter: show only matches by ${marker}`}
                       />
                     </div>
                     {/* Название маркера */}
@@ -424,7 +424,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                             ? 'bg-green-200 text-green-800'
                             : 'bg-blue-200 text-blue-800 hover:bg-blue-300'
                         }`}
-                        title="Копировать гаплотип"
+                        title="Copy haplotype"
                       >
                         {copiedKitNumber === query.kitNumber ? (
                           <Check className="h-3.5 w-3.5" />
@@ -504,7 +504,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
                             ? 'bg-green-100 text-green-700'
                             : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700'
                         }`}
-                        title="Копировать гаплотип"
+                        title="Copy haplotype"
                       >
                         {copiedKitNumber === match.profile?.kitNumber ? (
                           <Check className="h-3.5 w-3.5" />

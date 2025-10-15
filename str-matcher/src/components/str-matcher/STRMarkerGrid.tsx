@@ -47,44 +47,40 @@ const MarkerPanel: React.FC<MarkerPanelProps> = ({
   panelIcon
 }) => {
   return (
-    <div className="border-t first:border-t-0 border-gray-200">
+    <div className="border-t first:border-t-0 border-gray-100">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-6 py-4 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100/50 transition-all rounded-xl my-2 group"
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-all group"
       >
-        <div className={`flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-all ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
-          <ChevronDown className={`h-4 w-4 flex-shrink-0 text-primary transition-transform duration-300 ${isOpen ? 'transform rotate-0' : 'transform rotate-180'}`} />
-        </div>
-        <div className="flex items-center gap-2">
-          <BrainCircuit className="h-4 w-4 text-primary" />
-          <span className="text-sm font-bold text-gray-700">{title}</span>
-        </div>
-        <span className="text-xs text-gray-500 ml-2 bg-gradient-to-r from-blue-100 to-blue-200/70 py-1.5 px-3 rounded-full shadow-sm font-medium">{subTitle}</span>
+        <ChevronDown className={`h-3.5 w-3.5 flex-shrink-0 text-gray-500 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : 'transform rotate-0'}`} />
+        <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+        <span className="text-xs font-semibold text-gray-700">{title}</span>
+        <span className="text-xs text-gray-500 bg-gray-100 py-0.5 px-2 rounded-md font-medium">{subTitle}</span>
       </button>
-      
+
       {isOpen && (
-        <div className="px-4 pb-4">
-          <div className="grid grid-cols-8 gap-3 md:grid-cols-9">
+        <div className="px-2 pb-2">
+          <div className="grid grid-cols-9 gap-1.5 md:grid-cols-11 lg:grid-cols-13">
             {markers.map(({ name, value }) => {
               const colorClass = getMarkerColorClass(name);
               const hasValue = value && value.trim() !== '';
-              
+
               return (
-                <div key={name} className="relative transition-all hover:scale-105 duration-300">
+                <div key={name} className="relative group/marker">
                   <div className={twMerge(
-                    "h-10 flex items-center justify-center bg-gradient-to-r border rounded-t-xl shadow-sm",
+                    "h-7 flex items-center justify-center bg-gradient-to-br border rounded-t-lg",
                     colorClass
                   )}>
-                    <span className="text-sm font-bold">{name}</span>
+                    <span className="text-[10px] font-semibold leading-none">{name}</span>
                   </div>
                   <input
                     type="text"
                     value={value}
                     onChange={(e) => onMarkerChange?.(name, e.target.value)}
                     className={twMerge(
-                      "w-full h-12 px-1 text-center text-lg border-2 border-t-0 rounded-b-xl focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md focus:shadow-lg font-medium",
-                      hasValue ? "bg-primary/5 border-primary text-primary focus:border-primary focus:ring-primary/30" 
-                              : "border-gray-200 focus:border-primary focus:ring-primary/30"
+                      "w-full h-9 px-1 text-center text-sm border border-t-0 rounded-b-lg focus:outline-none focus:ring-1 transition-all font-medium",
+                      hasValue ? "bg-primary/5 border-primary text-primary focus:border-primary focus:ring-primary/40"
+                              : "border-gray-200 focus:border-primary focus:ring-primary/40 group-hover/marker:border-gray-300"
                     )}
                   />
                 </div>
@@ -189,10 +185,10 @@ const STRMarkerGrid: React.FC<{
     }));
 
   return (
-    <div className="border-2 border-gray-200 rounded-2xl bg-white shadow-xl p-4 bg-gradient-to-br from-white to-gray-50/30">
-      <div className="text-xl font-bold text-primary mb-4 border-b pb-2 flex items-center">
-        <BrainCircuit className="h-5 w-5 mr-2" />
-        STR Маркеры
+    <div className="border border-gray-200 rounded-xl bg-white shadow-sm p-3">
+      <div className="text-sm font-bold text-primary mb-2 pb-2 border-b border-gray-100 flex items-center">
+        <BrainCircuit className="h-4 w-4 mr-2" />
+        STR Markers
       </div>
       {panels.map(panel => (
         <MarkerPanel

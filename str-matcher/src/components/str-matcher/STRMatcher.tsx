@@ -35,7 +35,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const STRMatcher: React.FC = () => {
   const { t } = useTranslation();
-  
+
+  // ✅ УБРАНО: Инициализация теперь только в useSTRMatcher
+  // Двойная инициализация вызывала проблемы
+
   // 🔄 УПРОЩЕННЫЕ состояния из useSTRMatcher
   const {
     database, // 🔄 Простой массив в памяти
@@ -98,6 +101,21 @@ const STRMatcher: React.FC = () => {
   // Добавим состояние для отслеживания активности фильтра
   const [isFilterActive, setIsFilterActive] = useState(false);
 
+  // Состояние для отслеживания последнего импорта
+  const [lastImportedKitNumber, setLastImportedKitNumber] = useState<string | null>(null);
+
+  // ✅ useEffect для автовыбора последнего импортированного профиля
+  useEffect(() => {
+    if (lastImportedKitNumber && database.length > 0) {
+      console.log(`🔍 Auto-selecting last imported profile: ${lastImportedKitNumber}`);
+      const profile = database.find(p => p.kitNumber === lastImportedKitNumber);
+      if (profile) {
+        populateFromKitNumber(lastImportedKitNumber);
+        setLastImportedKitNumber(null); // Сбрасываем чтобы не повторять
+      }
+    }
+  }, [database, lastImportedKitNumber]);
+
   // 🔄 УПРОЩЕНИЕ: Убираем автозагрузку сохраненных профилей
   // База данных теперь пустая при запуске - пользователь загружает CSV файлы вручную
 
@@ -109,9 +127,9 @@ const STRMatcher: React.FC = () => {
       setStrMatches(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
       setHaplogroupFilteredMatches(prev => prev.filter(m => m.profile.kitNumber !== matchKitNumber));
       
-      console.log(`🗑️ Профиль ${matchKitNumber} удален из базы и результатов`);
+      console.log(`🗑️ Profile ${matchKitNumber} deleted from database and results`);
     } catch (error) {
-      console.error('❌ Ошибка удаления профиля:', error);
+      console.error('❌ Profile deletion error:', error);
     }
   }, [setDatabase, setStrMatches, setHaplogroupFilteredMatches]);
 
@@ -172,7 +190,7 @@ const STRMatcher: React.FC = () => {
       // 🔄 УПРОЩЕНИЕ: ищем профиль в массиве, а не в IndexedDB
       const selectedProfile = database.find(profile => profile.kitNumber === selectedKitNumber);
       if (!selectedProfile) {
-        console.warn(`Профиль ${selectedKitNumber} не найден в базе`);
+        console.warn(`Profile ${selectedKitNumber} not found in database`);
         return;
       }
 
@@ -205,8 +223,8 @@ const STRMatcher: React.FC = () => {
     
     markerOperations.populateMarkerInputs(fullProfile);
     } catch (error) {
-      console.error('❌ Ошибка получения профиля:', error);
-      setError('Ошибка получения профиля из массива');
+      console.error('❌ Error retrieving profile:', error);
+      setError('Error getting profile from array');
     }
   }, [database, searchHistory, setKitNumber, setQuery, setSearchHistory, setError, handleFindMatches, totalProfiles]);
 
@@ -335,7 +353,7 @@ const STRMatcher: React.FC = () => {
         setHaplogroupFilteredMatches(filtered);
       }
     } catch (error) {
-      console.error('❌ Ошибка фильтрации гаплогрупп:', error);
+      console.error('❌ Haplogroup filtering error:', error);
       setHaplogroupFilteredMatches(strMatches);
     } finally {
       setLoading(false);
@@ -359,13 +377,13 @@ const STRMatcher: React.FC = () => {
     }
   }, [strMatches, isFilterActive]);
 
-  // 🔄 УПРОЩЕННАЯ функция для сохранения только отфильтрованных профилей
+  // 🔄 УПРОЩЕННАЯ функция для сохранения только filtered profiles
   const handleKeepFilteredOnly = useCallback(async () => {
     if (!displayedMatches?.length || !query) return;
 
     try {
       setLoading(true);
-      // Получаем kit numbers отфильтрованных профилей
+      // Получаем kit numbers filtered profiles
       const filteredKitNumbers = new Set(displayedMatches.map(match => match.profile.kitNumber));
       
       // Добавляем текущий query профиль в список сохраняемых
@@ -389,7 +407,7 @@ const STRMatcher: React.FC = () => {
       setFilterHaplogroup('');
       setIsFilterActive(false);
       
-      console.log(`🔄 Оставлено ${filteredDatabase.length} отфильтрованных профилей`);
+      console.log(`🔄 Kept ${filteredDatabase.length} filtered profiles`);
     } catch (error) {
       console.error('Error keeping filtered profiles:', error);
       setError('Failed to update database with filtered profiles');
@@ -399,13 +417,13 @@ const STRMatcher: React.FC = () => {
   }, [displayedMatches, database, query, setLoading, setError, setDatabase, setStrMatches,
       setHaplogroupFilteredMatches, setFilterHaplogroup, setIsFilterActive]);
 
-  // 🔄 УПРОЩЕННАЯ функция для удаления отфильтрованных профилей
+  // 🔄 УПРОЩЕННАЯ функция для удаления filtered profiles
   const handleRemoveFiltered = useCallback(async () => {
     if (!displayedMatches?.length) return;
 
     try {
       setLoading(true);
-      // Получаем kit numbers отфильтрованных профилей
+      // Получаем kit numbers filtered profiles
       const filteredKitNumbers = new Set(displayedMatches.map(match => match.profile.kitNumber));
       
       // 🔄 Фильтруем базу данных только в памяти, оставляя только НЕ отфильтрованные профили
@@ -427,7 +445,7 @@ const STRMatcher: React.FC = () => {
       setFilterHaplogroup('');
       setIsFilterActive(false);
       
-      console.log(`🔄 Удалено ${filteredKitNumbers.size} профилей, осталось ${remainingDatabase.length}`);
+      console.log(`🔄 Deleted ${filteredKitNumbers.size} профилей, remaining ${remainingDatabase.length}`);
     } catch (error) {
       console.error('Error removing filtered profiles:', error);
       setError('Failed to remove filtered profiles from database');
@@ -486,9 +504,9 @@ const STRMatcher: React.FC = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      console.log(`✅ Экспортировано ${exportData.length} профилей`);
+      console.log(`✅ Exported ${exportData.length} профилей`);
     } catch (error) {
-      console.error('❌ Ошибка экспорта базы данных:', error);
+      console.error('❌ Database export error:', error);
       setError('Failed to export database');
     } finally {
       setLoading(false);
@@ -556,6 +574,14 @@ const STRMatcher: React.FC = () => {
               <Collapsible title={t('database.manualInput')} defaultOpen={false}>
                 <DatabaseInput
                   onDataLoaded={mergeDatabase}
+                  onDataProcessed={(lastKitNumber) => {
+                    // ✅ Устанавливаем последний импортированный kitNumber
+                    // useEffect выше автоматически вызовет populateFromKitNumber когда database обновится
+                    if (lastKitNumber) {
+                      console.log(`📝 Set last imported profile: ${lastKitNumber}`);
+                      setLastImportedKitNumber(lastKitNumber);
+                    }
+                  }}
                   onError={setError}
                   recordCount={totalProfiles}
                 />

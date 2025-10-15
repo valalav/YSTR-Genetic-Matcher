@@ -56,7 +56,7 @@ const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, mergeDa
 
    try {
       const profiles = await parseCSVData(await file.text());
-      console.log(`🔄 Загружено ${profiles.length} профилей из файла`);
+      console.log(`🔄 Loaded ${profiles.length} profiles from file`);
       
       // 🔄 НАКОПИТЕЛЬНАЯ ЗАГРУЗКА: используем mergeDatabase вместо setDatabase
       mergeDatabase(profiles);
@@ -100,7 +100,7 @@ const DataRepositories: React.FC<DataRepositoriesProps> = ({ onLoadData, mergeDa
 
 // 🔄 УПРОЩЕННАЯ функция загрузки выбранных репозиториев
 const handleLoadSelected = async (repoIds: string[]) => {
-  console.log("=== Начало загрузки репозиториев ===");
+  console.log("=== Starting repository loading ===");
   setLoading(true);
   setError(null);
 
@@ -112,7 +112,7 @@ const handleLoadSelected = async (repoIds: string[]) => {
       const repo = repositories.find(r => r.id === repoId);
       if (!repo?.url) continue;
 
-      console.log(`Загрузка репозитория ${repo.name}...`);
+      console.log(`Loading repository ${repo.name}...`);
       
       if (repo.type === 'chunked_json') {
         const profiles = await loadChunkedJson(repo);
@@ -121,25 +121,25 @@ const handleLoadSelected = async (repoIds: string[]) => {
         const response = await fetch(repo.url);
         if (!response.ok) throw new Error(t('database.loadError', { name: repo.name }));
           
-        console.log("Получение CSV данных...");
+        console.log("Fetching CSV data...");
         const csvData = await response.text();
         console.log(`CSV данные получены, размер: ${csvData.length} байт`);
         
-        console.log("Парсинг CSV...");
+        console.log("Parsing CSV...");
         const profiles = await parseCSVData(csvData, setProgress);
-        console.log(`Распаршено ${profiles.length} профилей`);
+        console.log(`Parsed ${profiles.length} profiles`);
         
         allProfiles.push(...profiles);
       }
     }
 
-    console.log(`🔄 Загружено всего ${allProfiles.length} профилей для объединения`);
+    console.log(`🔄 Loaded всего ${allProfiles.length} profiles для объединения`);
     // 🔄 НАКОПИТЕЛЬНАЯ ЗАГРУЗКА: используем mergeDatabase вместо setDatabase
     mergeDatabase(allProfiles);
-    console.log("=== Загрузка завершена ===");
+    console.log("=== Loading complete ===");
 
   } catch (error) {
-    console.error('=== Ошибка загрузки ===', error);
+    console.error('=== Loading error ===', error);
     setError(t('database.loadErrorWithMessage', { message: error instanceof Error ? error.message : 'Unknown error' }));
   } finally {
     setLoading(false);
@@ -210,7 +210,7 @@ const handleLoadSingle = async (repoId: string) => {
      try {
        // 🔄 Очищаем массив в памяти (для очистки используем setDatabase, а не mergeDatabase)
        setDatabase([]);
-       console.log('🔄 База данных очищена');
+       console.log('🔄 Database cleared');
      } catch (error: any) {
        console.error('Error clearing database:', error);
        setError(t('database.clearDatabaseError', { message: error.message }));

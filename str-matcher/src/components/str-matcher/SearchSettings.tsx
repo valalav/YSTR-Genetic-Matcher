@@ -177,7 +177,7 @@ export const SearchSettings: React.FC<SearchSettingsProps> = ({
               disabled={databaseSize === 0}
               className="px-5 py-3 bg-gradient-to-r from-accent to-accent/80 text-white rounded-xl hover:translate-y-[-2px] disabled:opacity-50 disabled:hover:translate-y-0 transition-all shadow-md hover:shadow-lg font-bold"
             >
-              Выгрузить базу ({databaseSize})
+              Export Database ({databaseSize})
             </button>
           </div>
 

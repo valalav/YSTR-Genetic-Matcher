@@ -121,9 +121,9 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
     // Show success message
     alert(
       `Import completed:\n` +
-      `• Всего импортировано: ${updatedStats.totalImported}\n` +
+      `• Total imported: ${updatedStats.totalImported}\n` +
       `• New profiles: ${updatedStats.newProfiles}\n` +
-      `• Переопределено: ${updatedStats.overriddenProfiles}`
+      `• Overridden: ${updatedStats.overriddenProfiles}`
     );
   }, [matches, dispatch]);
 
@@ -603,7 +603,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Очистить импорт ({importedProfiles.length})
+                  Clear import ({importedProfiles.length})
                 </button>
               )}
             </div>
@@ -618,7 +618,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   <div>
                     <div className="font-semibold text-green-900">Imported Profiles</div>
                     <div className="text-sm text-green-700">
-                      Всего: {importStats.totalImported} • Новых: {importStats.newProfiles} • Переопределено: {importStats.overriddenProfiles}
+                      Всего: {importStats.totalImported} • New: {importStats.newProfiles} • Overridden: {importStats.overriddenProfiles}
                     </div>
                   </div>
                 </div>
@@ -626,7 +626,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                   onClick={() => dispatch(clearImportedProfiles())}
                   className="text-green-700 hover:text-green-900 text-sm underline"
                 >
-                  Очистить
+                  Clear
                 </button>
               </div>
             )}
@@ -636,7 +636,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
             {/* Compact Search Settings */}
             <div className="flex flex-wrap gap-4">
               <div className="space-y-1" style={{width: '200px'}}>
-                <label className="block text-xs font-semibold text-gray-700">Панель маркеров</label>
+                <label className="block text-xs font-semibold text-gray-700">Marker Panel</label>
                 <select
                   value={markerCount}
                   onChange={(e) => setMarkerCount(parseInt(e.target.value) as 12 | 25 | 37 | 67 | 111)}

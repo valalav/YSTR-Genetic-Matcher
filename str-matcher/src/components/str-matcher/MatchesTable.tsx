@@ -29,6 +29,7 @@ interface Filters {
   kitNumber: string;
   name: string;
   country: string;
+  haplogroup: string;
 }
 
 interface HaplogroupInfoPopupProps {
@@ -55,12 +56,12 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
         try {
           setLoading(true);
           setError(null);
-          console.log(`Попытка запроса к API (${retryCount+1}/${maxRetries}): /haplogroup-path/${encodeURIComponent(haplogroup)}`);
+          console.log(`API request attempt (${retryCount+1}/${maxRetries}): /haplogroup-path/${encodeURIComponent(haplogroup)}`);
           
           // Используем fetch напрямую с опцией keepalive для поддержания соединения
           // Axios иногда имеет проблемы с обработкой определенных сетевых ошибок
           const url = `${window.location.origin}/api/haplogroup-path/${encodeURIComponent(haplogroup)}`;
-          console.log(`Отправка fetch запроса: ${url}`);
+          console.log(`Sending fetch request: ${url}`);
           
           const fetchResponse = await fetch(url, {
             method: 'GET',
@@ -77,7 +78,7 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
           });
           
           if (!fetchResponse.ok) {
-            throw new Error(`API вернул ошибку: ${fetchResponse.status} ${fetchResponse.statusText}`);
+            throw new Error(`API returned error: ${fetchResponse.status} ${fetchResponse.statusText}`);
           }
           
           const data = await fetchResponse.json();
@@ -86,7 +87,7 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
             throw new Error('No haplogroup data found');
           }
           
-          console.log('Получен ответ от API:', data);
+          console.log('Received API response:', data);
 
           setPathInfo({
             ftdna: data.ftdnaDetails ? {
@@ -144,7 +145,7 @@ const HaplogroupInfoPopup: React.FC<HaplogroupInfoPopupProps> = ({ haplogroup, o
         retryCount++;
         if (retryCount < maxRetries) {
           const delay = 1000 * Math.pow(2, retryCount - 1); // Экспоненциальная задержка: 1с, 2с, 4с...
-          console.log(`Ожидание ${delay}мс перед следующей попыткой...`);
+          console.log(`Waiting ${delay}ms before next attempt...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -237,10 +238,37 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
   const [filters, setFilters] = useState<Filters>({
     kitNumber: '',
     name: '',
-    country: ''
+    country: '',
+    haplogroup: ''
   });
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [selectedHaplogroup, setSelectedHaplogroup] = useState<string | null>(null);
+  const [haplogroupFilterList, setHaplogroupFilterList] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchSubclades = async () => {
+      if (filters.haplogroup.trim() === '') {
+        setHaplogroupFilterList([]);
+        return;
+      }
+      try {
+        const response = await apiClient.get(`/subclades/${encodeURIComponent(filters.haplogroup)}`);
+        if (response.data && response.data.subclades) {
+          setHaplogroupFilterList(response.data.subclades);
+          console.log(`Loaded ${response.data.subclades.length} subclades for ${filters.haplogroup}`);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subclades:', error);
+        setHaplogroupFilterList([]);
+      }
+    };
+
+    const debounceTimeout = setTimeout(() => {
+      fetchSubclades();
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimeout);
+  }, [filters.haplogroup]);
 
   const getValidMarkersForKit = (markerCount: MarkerCount, sortType: 'default' | 'mutation_rate'): string[] => {
     // Handle GP markers
@@ -273,26 +301,15 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
     const queryValue = query?.markers[marker];
     if (!queryValue) return false;
   
-    return matches.some(match => {
-      const matchValue = match.profile.markers[marker];
-      if (!matchValue) return false;
-  
-      const diff = calculateMarkerDifference(
-        queryValue, 
-        matchValue, 
-        marker,
-        marker in palindromes,
-        calculationMode
-      );
-      return diff !== 0;
-    });
+    return matches.some(match => !!match.profile.markers[marker]);
   });
 
   const filteredMatches = matches.filter(match => {
     const kitMatch = match.profile.kitNumber.toLowerCase().includes(filters.kitNumber.toLowerCase());
     const nameMatch = (match.profile.name || '').toLowerCase().includes(filters.name.toLowerCase());
     const countryMatch = (match.profile.country || '').toLowerCase().includes(filters.country.toLowerCase());
-    
+    const haplogroupMatch = filters.haplogroup.trim() === '' || haplogroupFilterList.includes(match.profile.haplogroup || '');
+
     const markerMatch = Object.entries(markerFilters).every(([marker, isChecked]) => {
       if (!isChecked) return true;
 
@@ -312,7 +329,7 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
       return diff === 0;
     });
     
-    return kitMatch && nameMatch && countryMatch && markerMatch;
+    return kitMatch && nameMatch && countryMatch && markerMatch && haplogroupMatch;
   });
 
   // Cache marker rarity calculations
@@ -440,7 +457,19 @@ const MatchesTable: React.FC<MatchesTableProps> = ({
                 }))}
               />
             </th>
-            <th className="border border-black p-1" colSpan={4}></th>
+            <th className="border border-black p-1">
+              <input
+                type="text"
+                className="input-primary text-xs w-full"
+                placeholder={t('table.filterHaplo')}
+                value={filters.haplogroup}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  haplogroup: e.target.value
+                }))}
+              />
+            </th>
+            <th className="border border-black p-1" colSpan={3}></th>
             {visibleMarkers.map(marker => (
               <th key={marker} className="border border-black p-1 w-8">
                 <input

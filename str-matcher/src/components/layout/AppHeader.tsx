@@ -41,7 +41,7 @@ export const AppHeader = () => {
               aria-label={t('header.dropdownTitle')}
             >
               <option value="en">English</option>
-              <option value="ru">Русский</option>
+              <option value="ru">Russian</option>
             </select>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import apiClient from '@/utils/axios';
+import { apiClient } from '@/utils/axios';
 
 const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
     const [result, setResult] = useState(null);
@@ -10,21 +10,12 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
         const fetchHaplogroupPath = async () => {
           try {
             const response = await apiClient.get(`/haplogroup-path/${encodeURIComponent(haplogroup)}`);
-            
+
             if (!response.data.ftdnaDetails && !response.data.yfullDetails) {
               throw new Error('No haplogroup data found');
             }
-      
-            setPathInfo({
-              ftdna: response.data.ftdnaDetails ? {
-                path: response.data.ftdnaDetails.path.string,
-                url: response.data.ftdnaDetails.url
-              } : undefined,
-              yfull: response.data.yfullDetails ? {
-                path: response.data.yfullDetails.path.string,
-                url: response.data.yfullDetails.url
-              } : undefined
-            });
+
+            setResult(response.data);
           } catch (err) {
             console.error('Error fetching haplogroup path:', err);
             setError(err instanceof Error ? err.message : 'Failed to load haplogroup path');
@@ -32,7 +23,7 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
             setLoading(false);
           }
         };
-      
+
         fetchHaplogroupPath();
       }, [haplogroup]);
 
@@ -40,7 +31,7 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Haplogroup {haplogroup}</h2>
+                    <h2 className="text-xl font-bold">Haplogroup: {haplogroup}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
                         ✕
                     </button>
@@ -58,13 +49,13 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
                                 <p className="text-sm bg-gray-50 p-3 rounded">
                                     {result.ftdnaDetails.path.string}
                                 </p>
-                                <a 
+                                <a
                                     href={`https://discover.familytreedna.com/y-dna/${haplogroup}/tree`}
-                                    target="_blank" 
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-sm text-blue-500 hover:underline mt-1 inline-block"
                                 >
-                                    View on FTDNA →
+                                    Open in FTDNA →
                                 </a>
                                 {result.ftdnaDetails.matchInfo?.confidence < 1 && (
                                     <div className="mt-2 text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
@@ -80,13 +71,13 @@ const HaplogroupInfoPopup = ({ haplogroup, onClose }) => {
                                 <p className="text-sm bg-gray-50 p-3 rounded">
                                     {result.yfullDetails.path.string}
                                 </p>
-                                <a 
+                                <a
                                     href={`https://www.yfull.com/tree/${haplogroup}/`}
-                                    target="_blank" 
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-sm text-green-500 hover:underline mt-1 inline-block"
                                 >
-                                    View on YFull →
+                                    Open in YFull →
                                 </a>
                                 {result.yfullDetails.matchInfo?.confidence < 1 && (
                                     <div className="mt-2 text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
