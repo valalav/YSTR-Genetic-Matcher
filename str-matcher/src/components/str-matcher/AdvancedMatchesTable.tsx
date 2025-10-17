@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from 'react';
-import type { STRMatch, STRProfile } from '@/utils/constants';
+import type { STRMatch, STRProfile, MarkerCount } from '@/utils/constants';
 import { calculateMarkerDifference } from '@/utils/calculations';
-import { palindromes } from '@/utils/constants';
+import { palindromes, markerGroups } from '@/utils/constants';
 import { getMarkersSortedByMutationRate } from '@/utils/mutation-rates';
 import { Download, Copy, Check } from 'lucide-react';
 
 interface AdvancedMatchesTableProps {
   matches: STRMatch[];
   query: STRProfile | null;
+  markerCount: MarkerCount;
   showOnlyDifferences?: boolean;
   onKitNumberClick?: (kitNumber: string) => void;
   onRemoveMarker?: (marker: string) => void;
@@ -62,7 +63,7 @@ const getMarkerPanelColor = (markerCount: number): string => {
   return 'bg-indigo-100 text-indigo-700';
 };
 
-const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile, isSearching = false }) => {
+const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, query, markerCount, showOnlyDifferences = false, onKitNumberClick, onRemoveMarker, onHaplogroupClick, onHaplogroupInfo, onEditProfile, isSearching = false }) => {
   const [showAllMarkers, setShowAllMarkers] = useState(false);
   const [markerFilters, setMarkerFilters] = useState<Record<string, boolean>>({});
   const [copiedKitNumber, setCopiedKitNumber] = useState<string | null>(null);
@@ -139,10 +140,10 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
   const visibleMarkers = useMemo(() => {
     if (!query) return [];
 
-    const queryMarkers = Object.keys(query.markers);
+    const panelMarkers = markerGroups[markerCount] || [];
 
     // ВСЕГДА показываем только маркеры с различиями
-    const relevantMarkers = queryMarkers.filter(marker => {
+    const relevantMarkers = panelMarkers.filter(marker => {
       const queryValue = query.markers[marker];
       const hasQueryValue = queryValue && queryValue.trim() !== '';
 
@@ -168,7 +169,7 @@ const AdvancedMatchesTable: React.FC<AdvancedMatchesTableProps> = ({ matches, qu
 
     // Sort by mutation rate: slow (stable, ancestral) → fast (recent divergence)
     return getMarkersSortedByMutationRate(relevantMarkers);
-  }, [query, matches]);
+  }, [query, matches, markerCount]);
 
   // Показываем ВСЕ различающиеся маркеры (без ограничений)
   const displayedMarkers = visibleMarkers;

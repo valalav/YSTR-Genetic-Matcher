@@ -27,10 +27,10 @@ export const markerCountOptions = [12, 37, 67, 111, "GP"] as const;
 
 // Группы маркеров для сравнения
 export const markerGroups = {
-  12: markers.slice(0, 12),
-  37: markers.slice(0, 37),
-  67: markers.slice(0, 67),
-  111: markers.slice(0, 111),
+  12: markers.slice(0, 11),
+  37: markers.slice(0, 30),
+  67: markers.slice(0, 58),
+  111: markers.slice(0, 102),
   GP: [
     "DYS393", "DYS570", "DYS19", "DYS392", "DYS549", "Y-GATA-H4", 
     "DYS444", "DYS460", "DYS458", "DYS481", "DYS635", "DYS438", 

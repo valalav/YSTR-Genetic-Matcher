@@ -640,7 +640,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
                 <label className="block text-xs font-semibold text-gray-700">Marker Panel</label>
                 <select
                   value={markerCount}
-                  onChange={(e) => setMarkerCount(parseInt(e.target.value) as 12 | 25 | 37 | 67 | 111)}
+                  onChange={(e) => setMarkerCount(parseInt(e.target.value) as 12 | 37 | 67 | 111)}
                   className="w-full px-3 py-2 bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all duration-300 text-sm font-semibold"
                 >
                   <option value="12">Y-STR12</option>
@@ -866,6 +866,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
             <AdvancedMatchesTable
               matches={displayedMatches}
               query={profile}
+              markerCount={markerCount}
               showOnlyDifferences={true}
               onKitNumberClick={handleKitNumberClick}
               onRemoveMarker={handleRemoveMarker}
