@@ -30,7 +30,8 @@ const findMatchesSchema = Joi.object({
   markerCount: Joi.number().integer().valid(12, 25, 37, 67, 111).default(37),
   haplogroupFilter: Joi.string().allow('', null),
   includeSubclades: Joi.boolean().default(false),
-  useCache: Joi.boolean().default(true)
+  useCache: Joi.boolean().default(true),
+  queryKitNumber: Joi.string().allow(null)
 });
 
 const searchProfilesSchema = Joi.object({

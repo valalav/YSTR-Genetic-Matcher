@@ -10,7 +10,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 
   // Connection pool settings optimized for high throughput
-  max: parseInt(process.env.DB_MAX_CONNECTIONS) || 50,  // Increased from 20 for better concurrency
+  max: parseInt(process.env.DB_MAX_CONNECTIONS) || 12,  // Increased from 20 for better concurrency
   idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 30000,
   connectionTimeoutMillis: 5000,
 

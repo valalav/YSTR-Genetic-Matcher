@@ -303,6 +303,20 @@ export class DatabaseManager {
       };
     }
   }
+
+  async deleteProfile(kitNumber: string): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    
+    const transaction = this.db.transaction(["profiles"], "readwrite");
+    const store = transaction.objectStore("profiles");
+    
+    return new Promise((resolve, reject) => {
+      const request = store.delete(kitNumber);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
 }
+
 
 export const dbManager = DatabaseManager.getInstance();

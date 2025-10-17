@@ -8,6 +8,7 @@ interface BackendSearchParams {
   limit?: number;
   markerCount?: 12 | 25 | 37 | 67 | 111;
   haplogroupFilter?: string;
+  queryKitNumber?: string;
 }
 
 interface BackendResponse {
@@ -97,7 +98,8 @@ export const useBackendAPI = () => {
         maxDistance: params.maxDistance ?? 25,
         maxResults: params.limit ?? 1000,
         markerCount: params.markerCount ?? 37,
-        haplogroupFilter: params.haplogroupFilter || undefined
+        haplogroupFilter: params.haplogroupFilter || undefined,
+        queryKitNumber: params.queryKitNumber
       };
 
       // Remove undefined values to avoid validation issues

@@ -205,7 +205,7 @@ export const useSTRMatcher = () => {
   }, []);
 
   // 🔄 НОВАЯ ФУНКЦИЯ: Накопительное добавление профилей без дублей
-  const mergeDatabase = useCallback((newProfiles: STRProfile[]) => {
+  const mergeDatabase = useCallback(async (newProfiles: STRProfile[]) => {
     setDatabase(prevDatabase => {
       const merged = mergeProfiles(prevDatabase, newProfiles);
       console.log(`🔄 База обновлена: было ${prevDatabase.length}, добавлено ${newProfiles.length}, стало ${merged.length}`);

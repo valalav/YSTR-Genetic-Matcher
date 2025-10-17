@@ -217,6 +217,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         limit: maxResults,
         markerCount,
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
+        queryKitNumber: foundProfile.kitNumber,
       });
 
       // Filter out the query profile itself from results
@@ -337,6 +338,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         limit: maxResults,
         markerCount,
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
+        queryKitNumber: foundProfile.kitNumber,
       });
 
       // Filter out the profile itself from results
@@ -384,6 +386,7 @@ const BackendSearch: React.FC<BackendSearchProps> = ({ onMatchesFound }) => {
         limit: maxResults,
         markerCount,
         haplogroupFilter: undefined, // Let FTDNA tree handle filtering
+        queryKitNumber: updatedProfile.kitNumber,
       });
 
       const cleanedMatches = searchMatches.filter(match =>

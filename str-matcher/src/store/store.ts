@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import userProfileReducer from './userProfile';
+import importedProfilesReducer from './importedProfilesSlice';
 import { storageMiddleware } from './storageMiddleware';
 
 export const store = configureStore({
   reducer: {
-    userProfile: userProfileReducer
+    userProfile: userProfileReducer,
+    importedProfiles: importedProfilesReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

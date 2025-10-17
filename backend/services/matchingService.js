@@ -24,7 +24,8 @@ class MatchingService {
       markerCount = 37,
       haplogroupFilter = null,
       includeSubclades = false,
-      useCache = true
+      useCache = true,
+      queryKitNumber = null
     } = options;
     console.log(`🔍 findMatches called with maxResults=${maxResults}, maxDistance=${maxDistance}`);
     // CRITICAL FIX: Validate marker values are numeric (prevents 40x slowdown)
@@ -87,7 +88,12 @@ class MatchingService {
       }
 
       const matches = result.rows
-        .filter(row => row.genetic_distance > 0)  // ✅ Exclude GD=0 (self-match)
+        .filter(row => {
+          // Exclude query profile by kit_number if provided
+          // Otherwise, keep all results including GD=0 (allows duplicate profiles)
+          if (queryKitNumber) return row.kit_number !== queryKitNumber;
+          return row.genetic_distance > 0;
+        })
         .map(row => ({
           profile: {
             kitNumber: row.kit_number,
